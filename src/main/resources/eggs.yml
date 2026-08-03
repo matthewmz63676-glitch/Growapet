@@ -1,0 +1,210 @@
+# Eggs available per zone, sold in the Egg Shop GUI (EggShopMenu) and given via
+# /getegg (admin). Prices roughly follow zone.cost * (0.05 - 0.25) scaled by rarity
+# within the zone. "entity" must be a valid Paper 1.21 EntityType.
+eggs:
+  spawn:
+    - entity: CHICKEN
+      incubate-seconds: 30
+      price-coins: 25
+      weight: common
+    - entity: RABBIT
+      incubate-seconds: 30
+      price-coins: 35
+      weight: common
+    - entity: CAT
+      incubate-seconds: 40
+      price-coins: 60
+      weight: uncommon
+    - entity: WOLF
+      incubate-seconds: 45
+      price-coins: 90
+      weight: uncommon
+    - entity: PIG
+      incubate-seconds: 30
+      price-coins: 25
+      weight: common
+  forest:
+    - entity: WOLF
+      incubate-seconds: 60
+      price-coins: 40
+      weight: common
+    - entity: FOX
+      incubate-seconds: 60
+      price-coins: 55
+      weight: common
+    - entity: BEE
+      incubate-seconds: 75
+      price-coins: 90
+      weight: uncommon
+    - entity: PANDA
+      incubate-seconds: 90
+      price-coins: 125
+      weight: rare
+    - entity: OCELOT
+      incubate-seconds: 70
+      price-coins: 75
+      weight: uncommon
+  plains:
+    - entity: HORSE
+      incubate-seconds: 90
+      price-coins: 150
+      weight: common
+    - entity: DONKEY
+      incubate-seconds: 90
+      price-coins: 130
+      weight: common
+    - entity: SHEEP
+      incubate-seconds: 60
+      price-coins: 90
+      weight: common
+    - entity: COW
+      incubate-seconds: 60
+      price-coins: 90
+      weight: common
+    - entity: MULE
+      incubate-seconds: 100
+      price-coins: 200
+      weight: uncommon
+    - entity: LLAMA
+      incubate-seconds: 100
+      price-coins: 220
+      weight: uncommon
+  mushroom:
+    - entity: MOOSHROOM
+      incubate-seconds: 120
+      price-coins: 400
+      weight: rare
+    - entity: IRON_GOLEM
+      incubate-seconds: 180
+      price-coins: 700
+      price-gems: 5
+      weight: epic
+    - entity: ALLAY
+      incubate-seconds: 150
+      price-coins: 550
+      weight: rare
+    - entity: PARROT
+      incubate-seconds: 100
+      price-coins: 300
+      weight: uncommon
+  desert:
+    - entity: CAMEL
+      incubate-seconds: 120
+      price-coins: 700
+      weight: common
+    - entity: RABBIT
+      incubate-seconds: 90
+      price-coins: 400
+      weight: common
+    - entity: ARMADILLO
+      incubate-seconds: 130
+      price-coins: 900
+      weight: uncommon
+    - entity: SNIFFER
+      incubate-seconds: 200
+      price-coins: 1500
+      price-gems: 10
+      weight: epic
+  badlands:
+    - entity: WOLF
+      incubate-seconds: 130
+      price-coins: 1400
+      weight: common
+    - entity: GOAT
+      incubate-seconds: 140
+      price-coins: 1700
+      weight: uncommon
+    - entity: MULE
+      incubate-seconds: 150
+      price-coins: 2000
+      weight: uncommon
+    - entity: VEX
+      incubate-seconds: 220
+      price-coins: 3000
+      price-gems: 20
+      weight: epic
+  snow:
+    - entity: POLAR_BEAR
+      incubate-seconds: 150
+      price-coins: 2800
+      weight: uncommon
+    - entity: PANDA
+      incubate-seconds: 150
+      price-coins: 2500
+      weight: uncommon
+    - entity: GOAT
+      incubate-seconds: 150
+      price-coins: 2500
+      weight: uncommon
+    - entity: STRIDER
+      incubate-seconds: 200
+      price-coins: 4500
+      price-gems: 25
+      weight: rare
+  deep_caves:
+    - entity: BAT
+      incubate-seconds: 180
+      price-coins: 5000
+      weight: common
+    - entity: ALLAY
+      incubate-seconds: 200
+      price-coins: 7000
+      weight: uncommon
+    - entity: SILVERFISH
+      incubate-seconds: 180
+      price-coins: 5500
+      weight: common
+    - entity: WARDEN
+      incubate-seconds: 600
+      price-coins: 12000
+      price-gems: 200
+      weight: exclusive
+  nether:
+    - entity: STRIDER
+      incubate-seconds: 250
+      price-coins: 15000
+      weight: uncommon
+    - entity: HOGLIN
+      incubate-seconds: 250
+      price-coins: 18000
+      weight: uncommon
+    - entity: PIGLIN
+      incubate-seconds: 250
+      price-coins: 18000
+      weight: uncommon
+    - entity: GHAST
+      incubate-seconds: 400
+      price-coins: 30000
+      price-gems: 150
+      weight: epic
+  end:
+    - entity: ENDERMAN
+      incubate-seconds: 400
+      price-coins: 40000
+      weight: rare
+    - entity: SHULKER
+      incubate-seconds: 500
+      price-coins: 60000
+      price-gems: 300
+      weight: epic
+    - entity: ENDER_DRAGON
+      incubate-seconds: 1800
+      price-coins: 200000
+      price-gems: 1500
+      weight: mythic
+  ancient_realm:
+    - entity: WITHER
+      incubate-seconds: 2400
+      price-coins: 500000
+      price-gems: 3000
+      weight: legendary
+    - entity: IRON_GOLEM
+      incubate-seconds: 1800
+      price-coins: 350000
+      price-gems: 2000
+      weight: epic
+    - entity: ENDER_DRAGON
+      incubate-seconds: 3600
+      price-coins: 1000000
+      price-gems: 5000
+      weight: secret

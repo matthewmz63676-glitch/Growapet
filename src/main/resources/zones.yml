@@ -1,0 +1,109 @@
+# Zone definitions, including warp coordinates used by ZoneManager/WarpMenu.
+# Coordinates are placeholders (world "world", spaced 100 blocks apart along X) —
+# the server owner should edit these to match the actual built zones.
+#
+# Optional per-zone extras (all default to "not required"/"no wall"):
+#   req-level: 20        # minimum player level required, on top of coin/gem cost
+#   gem-cost: 100         # gem cost in addition to the coin "cost" below
+#   wall:                 # a physical Petcore-style zone gate: fake black glass
+#     world: "world"      # covers this cuboid until the zone is unlocked, then a
+#     x1: 95              # spectator-mode break cutscene plays. Omit the whole
+#     y1: 60               # "wall:" block entirely for an instant-unlock zone
+#     z1: -10              # with no physical gate (the old behaviour).
+#     x2: 105
+#     y2: 90
+#     z2: 10
+#     cam-x: 100           # optional cutscene camera pose; omit cam-x to skip
+#     cam-y: 100           # the spectator cutscene and just unlock instantly
+#     cam-z: -20           # once the wall gate itself is configured.
+#     cam-yaw: 0
+#     cam-pitch: 0
+zones:
+  spawn:
+    display-name: "Spawn"
+    order: 0
+    cost: 0
+    world: "world"
+    x: 0
+    y: 100
+    z: 0
+  forest:
+    display-name: "Forest"
+    order: 1
+    cost: 500
+    world: "world"
+    x: 100
+    y: 100
+    z: 0
+  plains:
+    display-name: "Plains"
+    order: 2
+    cost: 1500
+    world: "world"
+    x: 200
+    y: 100
+    z: 0
+  mushroom:
+    display-name: "Mushroom Fields"
+    order: 3
+    cost: 3000
+    world: "world"
+    x: 300
+    y: 100
+    z: 0
+  desert:
+    display-name: "Desert"
+    order: 4
+    cost: 6000
+    world: "world"
+    x: 400
+    y: 100
+    z: 0
+  badlands:
+    display-name: "Badlands"
+    order: 5
+    cost: 12000
+    world: "world"
+    x: 500
+    y: 100
+    z: 0
+  snow:
+    display-name: "Snowlands"
+    order: 6
+    cost: 25000
+    world: "world"
+    x: 600
+    y: 100
+    z: 0
+  deep_caves:
+    display-name: "Deep Caves"
+    order: 7
+    cost: 50000
+    world: "world"
+    x: 700
+    y: 100
+    z: 0
+  nether:
+    display-name: "Nether"
+    order: 8
+    cost: 100000
+    world: "world"
+    x: 800
+    y: 100
+    z: 0
+  end:
+    display-name: "The End"
+    order: 9
+    cost: 250000
+    world: "world"
+    x: 900
+    y: 100
+    z: 0
+  ancient_realm:
+    display-name: "Ancient Realm"
+    order: 10
+    cost: 1000000
+    world: "world"
+    x: 1000
+    y: 100
+    z: 0

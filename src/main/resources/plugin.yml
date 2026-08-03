@@ -1,0 +1,78 @@
+main: me.growapet.GrowAPet
+version: 1.0.0
+name: GrowAPet
+author: Justanother_Game
+description: A pet progression plugin featuring mob zones, pet collection, rebirths, upgrades and custom combat.
+api-version: 1.21
+
+soft-depend: [Vault, PlaceholderAPI, WorldGuard, FancyHolograms, LuckPerms]
+
+commands:
+  growapet:
+    description: GrowAPet admin command
+    usage: /growapet <reload|give|setlevel|setcoins|setgems>
+  plot:
+    description: Manage your plot
+    usage: /plot [home|settings]
+  pets:
+    description: View your pets
+    usage: /pets
+  warp:
+    description: Open the warp GUI
+    usage: /warp
+  zones:
+    description: View zones
+    usage: /zones
+  quests:
+    description: View your quests
+    usage: /quests
+  trade:
+    description: Trade with another player
+    usage: /trade <player>
+  stats:
+    description: View your stats
+    usage: /stats
+  leaderboard:
+    description: View leaderboards
+    usage: /leaderboard [coins|gems|credits|level|mobkills|bosskills|damage|coinmulti|gemsmulti]
+  boss:
+    description: View active boss info
+    usage: /boss
+  options:
+    description: View plugin options
+    usage: /options
+  visit:
+    description: Visit another player's plot
+    usage: /visit <player>
+  getmob:
+    description: Get a mob spawn item (admin)
+    usage: /getmob <player> <entityType> [amount]
+  getegg:
+    description: Get an egg item (admin)
+    usage: /getegg <player> <entityType> [incubateSeconds]
+  getpet:
+    description: Get a customized spawn egg (admin)
+    usage: /getpet <player> <mob_name>
+  shop:
+    description: Open the multiplier shop
+    usage: /shop
+  spawn:
+    description: Teleport to spawn
+    usage: /spawn
+  setspawn:
+    description: Set the server spawn location (admin)
+    usage: /setspawn
+  store:
+    description: Open the Credits store
+    usage: /store
+  unlockzone:
+    description: Force-unlock a zone for a player (admin)
+    usage: /unlockzone <player> <zoneId>
+
+permissions:
+  growapet.admin:
+    description: Access to all GrowAPet admin commands
+    default: op
+  growapet.chat.color:
+    description: Use & colour codes and #RRGGBB hex codes in chat
+    default: op

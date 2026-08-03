@@ -1,0 +1,29 @@
+# Quest definitions. QuestManager is not implemented yet — this schema is
+# the intended shape once it is.
+daily:
+  kill_mobs:
+    display-name: "Kill 50 mobs"
+    type: MOB_KILLS
+    amount: 50
+    reward-coins: 200
+    reward-exp: 100
+
+weekly:
+  hatch_eggs:
+    display-name: "Hatch 20 eggs"
+    type: EGGS_HATCHED
+    amount: 20
+    reward-gems: 50
+    reward-exp: 500
+
+story:
+  reach_desert:
+    display-name: "Reach the Desert"
+    type: ZONE_UNLOCK
+    zone: desert
+    reward-credits: 5
+  defeat_forest_boss:
+    display-name: "Defeat the Forest Boss"
+    type: BOSS_KILL
+    boss: forest_boss
+    reward-credits: 10

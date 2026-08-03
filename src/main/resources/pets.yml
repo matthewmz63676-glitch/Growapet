@@ -1,0 +1,23 @@
+# Pet rarity/size weighting and base stats. Rolling logic currently lives in
+# PetManager (Java) — this file is reserved for future data-driven balancing.
+rarities:
+  COMMON: { weight: 45, color: "&f" }
+  UNCOMMON: { weight: 25, color: "&a" }
+  RARE: { weight: 15, color: "&9" }
+  EPIC: { weight: 8, color: "&5" }
+  LEGENDARY: { weight: 4, color: "&6" }
+  MYTHIC: { weight: 2, color: "&d" }
+  DIVINE: { weight: 0.7, color: "&b" }
+  SECRET: { weight: 0.25, color: "&4" }
+  EXCLUSIVE: { weight: 0.05, color: "&c" }
+
+sizes:
+  - TINY
+  - SMALL
+  - NORMAL
+  - LARGE
+  - HUGE
+  - MASSIVE
+  - TITAN
+  - COLOSSAL
+  - MYTHICAL

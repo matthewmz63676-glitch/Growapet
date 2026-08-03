@@ -1,0 +1,175 @@
+# Boss definitions, one per biome-themed outpost, roughly ordered easiest -> hardest.
+# Each boss spawns at its own world/x/y/z (placeholders below - the server owner
+# should point these at the actual built outposts). Rewards/health/damage scale
+# together so the curve stays "well balanced" from Plains up to the Cave Warden.
+bosses:
+  plains_boss:
+    display-name: "Plains Overlord"
+    entity: IRON_GOLEM
+    health: 4000
+    damage: 12
+    respawn-minutes: 45
+    world: "world"
+    x: 1500
+    y: 100
+    z: 0
+    rewards:
+      top1-credits: 8
+      top2-credits: 4
+      top3-credits: 2
+      participation-coins: 80
+      participation-gems: 4
+      participation-exp: 150
+  flower_forest_boss:
+    display-name: "Flower Forest Evoker"
+    entity: EVOKER
+    health: 7000
+    damage: 15
+    respawn-minutes: 50
+    world: "world"
+    x: 1650
+    y: 100
+    z: 0
+    rewards:
+      top1-credits: 14
+      top2-credits: 7
+      top3-credits: 3
+      participation-coins: 150
+      participation-gems: 8
+      participation-exp: 280
+  spruce_forest_boss:
+    display-name: "Timberfell Ravager"
+    entity: RAVAGER
+    health: 11000
+    damage: 18
+    respawn-minutes: 60
+    world: "world"
+    x: 1800
+    y: 100
+    z: 0
+    rewards:
+      top1-credits: 25
+      top2-credits: 12
+      top3-credits: 6
+      participation-coins: 280
+      participation-gems: 15
+      participation-exp: 500
+  savanna_boss:
+    display-name: "Savanna Warchief"
+    entity: PIGLIN_BRUTE
+    health: 17000
+    damage: 22
+    respawn-minutes: 70
+    world: "world"
+    x: 1950
+    y: 100
+    z: 0
+    rewards:
+      top1-credits: 45
+      top2-credits: 22
+      top3-credits: 11
+      participation-coins: 550
+      participation-gems: 28
+      participation-exp: 900
+  cherry_grove_boss:
+    display-name: "Cherry Grove Marksman"
+    entity: PILLAGER
+    health: 26000
+    damage: 27
+    respawn-minutes: 85
+    world: "world"
+    x: 2100
+    y: 100
+    z: 0
+    rewards:
+      top1-credits: 80
+      top2-credits: 40
+      top3-credits: 20
+      participation-coins: 1000
+      participation-gems: 50
+      participation-exp: 1600
+  desert_boss:
+    display-name: "Desert Husk Tyrant"
+    entity: HUSK
+    health: 40000
+    damage: 33
+    respawn-minutes: 100
+    world: "world"
+    x: 2250
+    y: 100
+    z: 0
+    rewards:
+      top1-credits: 140
+      top2-credits: 70
+      top3-credits: 35
+      participation-coins: 1900
+      participation-gems: 90
+      participation-exp: 2800
+  mushroom_island_boss:
+    display-name: "Mushroom Broodmother"
+    entity: SPIDER
+    health: 60000
+    damage: 40
+    respawn-minutes: 120
+    world: "world"
+    x: 2400
+    y: 100
+    z: 0
+    rewards:
+      top1-credits: 250
+      top2-credits: 125
+      top3-credits: 60
+      participation-coins: 3500
+      participation-gems: 160
+      participation-exp: 5000
+  ice_spikes_boss:
+    display-name: "Frostspike Colossus"
+    entity: POLAR_BEAR
+    health: 90000
+    damage: 48
+    respawn-minutes: 140
+    world: "world"
+    x: 2550
+    y: 100
+    z: 0
+    rewards:
+      top1-credits: 440
+      top2-credits: 220
+      top3-credits: 110
+      participation-coins: 6500
+      participation-gems: 290
+      participation-exp: 9000
+  ocean_boss:
+    display-name: "Abyssal Elder Guardian"
+    entity: ELDER_GUARDIAN
+    health: 135000
+    damage: 58
+    respawn-minutes: 170
+    world: "world"
+    x: 2700
+    y: 100
+    z: 0
+    rewards:
+      top1-credits: 780
+      top2-credits: 390
+      top3-credits: 195
+      participation-coins: 12000
+      participation-gems: 520
+      participation-exp: 16000
+  cave_boss:
+    display-name: "Cave Warden"
+    entity: WARDEN
+    health: 200000
+    damage: 70
+    respawn-minutes: 200
+    world: "world"
+    x: 2850
+    y: 100
+    z: 0
+    rewards:
+      top1-credits: 1400
+      top2-credits: 700
+      top3-credits: 350
+      participation-coins: 22000
+      participation-gems: 950
+      participation-exp: 29000

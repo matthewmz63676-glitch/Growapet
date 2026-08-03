@@ -1,0 +1,9 @@
+# GUI menu layouts. No GUIs are implemented yet (see gui/ package) — this
+# schema is the intended shape once they are.
+warp-gui:
+  title: "&8Warps"
+  size: 27
+
+pets-gui:
+  title: "&8Your Pets"
+  size: 54

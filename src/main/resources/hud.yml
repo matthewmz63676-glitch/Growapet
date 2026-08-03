@@ -1,0 +1,78 @@
+# Sidebar scoreboard, action bar, and tab list header/footer. All three read
+# straight from PlayerData (no PlaceholderAPI dependency), refreshed
+# continuously (scoreboard/tab once a second, action bar twice a second so
+# it never fades out between updates). Supported placeholders: %player%
+# %rank% %coins% %gems% %credits% %level% %exp_bar% %damage% %coinmulti%
+# %gemsmulti% %expmulti% %mob_kills% %boss_kills% %plot_id% %online%
+# %max_online% %ping%
+#
+# icons: maps a name to the glyph shown for %icon_<name>%, themed after real
+# items - coin (Gold Ingot), gem (Diamond), credit (Emerald), damage (a
+# blade), level/kills/plot each get their own small marker. The defaults
+# below are plain Unicode symbols that vanilla Minecraft's built-in font
+# already renders (no resource pack needed) - that's why they show up
+# immediately instead of a tofu "[]" box, which is what you get with a
+# codepoint your client has no glyph for.
+#
+# To use real custom sprite art instead (an actual item TEXTURE rather than a
+# Unicode lookalike): swap a value to a Unicode Private-Use-Area codepoint
+# (U+E000-U+F8FF, reserved for exactly this, e.g. "\uE000" - YAML
+# double-quoted strings accept \uXXXX escapes directly) and ship a resource
+# pack with a custom font "provider" (a bitmap/sprite atlas) mapping that
+# exact codepoint to your icon texture. Until players have that pack
+# installed, a PUA codepoint always renders as "[]" on their end - that's a
+# resource-pack requirement, not a config bug, which is why the shipped
+# defaults deliberately don't use one. The Store GUI (/store) uses real
+# vanilla item icons (actual Gold Ingot/Diamond/Emerald textures) directly,
+# since inventory GUI slots don't need a resource pack for that.
+#
+# Every icon is auto-wrapped in "&f" (white/no-tint) + reset, so it always
+# renders true to itself and is never recoloured by the line's own colour
+# codes - put your own colour code right after %icon_x% to resume
+# colouring the text that follows it.
+icons:
+  coin: "●"
+  gem: "♦"
+  credit: "❖"
+  damage: "⚔"
+  star: "★"
+  level: "✦"
+  kills: "☠"
+  plot: "⌂"
+
+scoreboard:
+  enabled: true
+  title-text: "✦ GrowAPet ✦"
+  title-gradient: ["#FF5F6D", "#FFC371"]
+  title-bold: true
+  title: "&d&lGrowAPet"
+  lines:
+    - "&7"
+    - "&#6750F8&lᴘ&#6458ED&lʀ&#615FE2&lᴏ&#5E67D7&lꜰ&#5A6FCC&lɪ&#5776C1&lʟ&#547EB6&lᴇ &7➣"
+    - "&8• &7ʟᴇᴠᴇʟ &8➟ %icon_level%&a%level% &8(&a%exp_bar%&8)"
+    - "&8• &7ᴍᴏʙ ᴋɪʟʟѕ &8➟ %icon_kills%&c%mob_kills%"
+    - "&8• &7ᴘʟᴏᴛ &8➟ %icon_plot%&b#%plot_id%"
+    - "&7"
+    - "&#6750F8&lʙ&#6457EF&lᴀ&#625DE5&lʟ&#5F64DC&lᴀ&#5C6AD2&lɴ&#5971C9&lᴄ&#5777BF&lᴇ&#547EB6&lѕ &7➣"
+    - "&8• %icon_coin%&#E8AA54ᴄᴏɪɴѕ &8➟ &f%coins%"
+    - "&8• %icon_gem%&#4FC3F7ɢᴇᴍѕ &8➟ &f%gems%"
+    - "&8• %icon_credit%&#4AD332ᴄʀᴇᴅɪᴛѕ &8➟ &f%credits%"
+    - "&7 "
+    - "&6&lgrowapet.minehut.gg"
+
+actionbar:
+  enabled: true
+  format: "%icon_coin%&6%coins% &7• %icon_gem%&aGems &7%gems% &7• %icon_credit%&bCredits &7%credits% &7• %icon_damage%&cDamage &7%damage%x &7• &d✦ Lv.%level% &7(&a%exp_bar%&7)"
+
+tab:
+  enabled: true
+  header-gradient: ["#8E2DE2", "#4A00E0"]
+  header-gradient-text: "✦ GrowAPet ✦"
+  header: |
+    &7Welcome, %rank%&f%player%&7!
+    &8&m――――――――――――――――――
+  footer: |
+    &8&m――――――――――――――――――
+    &7Level &f%level% &8| %icon_coin%&6%coins% &8| %icon_gem%&a%gems% &8| %icon_credit%&b%credits%
+    &7Online: &a%online%&7/&a%max_online% &8| &7Ping: &a%ping%ms
+    &6&lgrowapet.minehut.gg

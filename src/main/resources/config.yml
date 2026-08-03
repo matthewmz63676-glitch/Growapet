@@ -1,0 +1,21 @@
+# GrowAPet main configuration
+
+database:
+  type: sqlite
+
+plot:
+  default-size: 32
+  default-pet-limit: 5
+  default-egg-limit: 3
+  world: growapet_plots
+
+economy:
+  starting-coins: 100
+  starting-gems: 0
+  starting-credits: 0
+
+leveling:
+  # exp required for level N = round(50 * N^1.5) + 100 (see PlayerData#expToLevelUp)
+  sync-minecraft-xp-bar: true
+
+autosave-interval-seconds: 300
