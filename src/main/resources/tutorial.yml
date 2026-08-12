@@ -1,0 +1,14 @@
+# Packet-only onboarding guide adapted from the supplied Petcore tutorial NPC.
+# Set these four locations to match the completed tutorial build on your server.
+tutorial:
+  enabled: true
+  auto-start: false
+  allow-replay: false
+  teleport-player: true
+  world: world
+  walk-blocks-per-tick: 0.19
+  route:
+    start: { x: -5, y: 71, z: 368, yaw: 180, pitch: 0 }
+    mob: { x: 4, y: 71, z: 287 }
+    shop: { x: 15, y: 71, z: 255 }
+    egg: { x: 16, y: 71, z: 261 }

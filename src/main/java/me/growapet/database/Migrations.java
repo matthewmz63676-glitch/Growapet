@@ -17,7 +17,8 @@ final class Migrations {
                 new Migration(4, Migrations::tradeEscrowSchema),
                 new Migration(5, Migrations::creditProgressionSchema),
                 new Migration(6, Migrations::durableBossSchema),
-                new Migration(7, Migrations::durableMobRespawnSchema)
+                new Migration(7, Migrations::durableMobRespawnSchema),
+                new Migration(8, Migrations::tutorialProgressSchema)
         );
     }
 
@@ -99,6 +100,13 @@ final class Migrations {
         execute(connection,
                 "CREATE TABLE IF NOT EXISTS mob_respawns (respawn_id TEXT PRIMARY KEY, mob_id TEXT NOT NULL, world TEXT NOT NULL, x REAL NOT NULL, y REAL NOT NULL, z REAL NOT NULL, yaw REAL NOT NULL DEFAULT 0, pitch REAL NOT NULL DEFAULT 0, due_at INTEGER NOT NULL)",
                 "CREATE INDEX IF NOT EXISTS idx_mob_respawns_due ON mob_respawns(due_at)"
+        );
+    }
+
+    private static void tutorialProgressSchema(Connection connection) throws SQLException {
+        execute(connection,
+                "CREATE TABLE IF NOT EXISTS tutorial_progress (player_uuid TEXT PRIMARY KEY, stage TEXT NOT NULL DEFAULT 'MOB', updated_at INTEGER NOT NULL)",
+                "CREATE INDEX IF NOT EXISTS idx_tutorial_stage ON tutorial_progress(stage)"
         );
     }
 

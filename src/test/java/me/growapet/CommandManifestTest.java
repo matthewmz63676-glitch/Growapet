@@ -14,7 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 final class CommandManifestTest {
     private static final Set<String> EXPECTED = Set.of("growapet", "plot", "pets", "stats", "boss", "warp",
             "zones", "visit", "leaderboard", "getegg", "shop", "spawn", "setspawn", "store", "unlockzone",
-            "quests", "trade", "options", "getmob", "getpet", "autokill", "daily");
+            "quests", "trade", "options", "getmob", "getpet", "autokill", "daily", "tutorial");
 
     @Test void everyDocumentedCommandIsDeclaredWithUsageText() throws Exception {
         try (var stream = getClass().getClassLoader().getResourceAsStream("plugin.yml")) {

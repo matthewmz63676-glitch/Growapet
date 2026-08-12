@@ -41,6 +41,7 @@ public final class GrowAPetTabCompleter implements TabCompleter {
             case"getegg"->getEgg(sender,args);
             case"shop"->at(args,1,List.of("eggs"));
             case"unlockzone"->unlockZone(sender,args);
+            case"tutorial"->tutorial(sender,args);
             case"setspawn"->sender.hasPermission("growapet.admin.spawn")?List.of():List.of();
             default->List.of();
         };
@@ -97,6 +98,7 @@ public final class GrowAPetTabCompleter implements TabCompleter {
     private List<String> configured(CommandSender sender,String[]args,String permission,String root){if(!sender.hasPermission(permission))return List.of();if(args.length==1)return onlinePlayers(player->true);if(args.length==2)return keys(plugin.getConfigManager().mobs().getConfigurationSection(root));return List.of();}
     private List<String> getEgg(CommandSender sender,String[]args){if(!sender.hasPermission("growapet.admin.give"))return List.of();if(args.length==1)return onlinePlayers(player->true);if(args.length==2)return java.util.Arrays.stream(EntityType.values()).filter(type->type.isAlive()&&type.isSpawnable()&&type!=EntityType.PLAYER&&type!=EntityType.ARMOR_STAND).map(type->type.name().toLowerCase(Locale.ROOT)).toList();if(args.length==3)return List.of("60","300","3600");return List.of();}
     private List<String> unlockZone(CommandSender sender,String[]args){if(!sender.hasPermission("growapet.admin.zones"))return List.of();if(args.length==1)return onlinePlayers(player->true);if(args.length==2)return zoneIds();return List.of();}
+    private List<String> tutorial(CommandSender sender,String[]args){if(!sender.hasPermission("growapet.tutorial")&&!sender.hasPermission("growapet.admin.tutorial"))return List.of();if(args.length==1){List<String>values=new ArrayList<>(List.of("start","stop"));if(sender.hasPermission("growapet.admin.tutorial"))values.add("reset");return values;}if(args.length==2&&sender.hasPermission("growapet.admin.tutorial")&&List.of("start","stop","reset").contains(args[0].toLowerCase(Locale.ROOT)))return onlinePlayers(player->true);return List.of();}
     private List<String> zoneIds(){return plugin.getZoneManager().getZonesInOrder().stream().map(zone->zone.getId()).toList();}
     private static List<String> keys(ConfigurationSection section){return section==null?List.of():List.copyOf(section.getKeys(false));}
     private static List<String> at(String[]args,int position,List<String>values){return args.length==position?values:List.of();}

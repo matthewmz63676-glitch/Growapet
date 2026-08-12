@@ -31,6 +31,7 @@ implements Listener {
 
     @EventHandler
     public void onPlayerQuit(PlayerQuitEvent event) {
+        this.plugin.getTutorialManager().forceStop(event.getPlayer());
         this.plugin.getActionBarManager().clear(event.getPlayer().getUniqueId());
         this.plugin.getLeaderboardManager().dismissPersonal(event.getPlayer().getUniqueId());
         java.util.concurrent.CompletableFuture.allOf(

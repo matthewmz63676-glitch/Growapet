@@ -60,6 +60,7 @@ public final class CommandLockdownListener implements Listener {
             case "setspawn" -> player.hasPermission("growapet.admin.spawn");
             case "unlockzone" -> player.hasPermission("growapet.admin.zones");
             case "autokill" -> player.hasPermission("growapet.autokill");
+            case "tutorial" -> player.hasPermission("growapet.tutorial") || player.hasPermission("growapet.admin.tutorial");
             case "boss" -> tokens.length < 2 || !tokens[1].equalsIgnoreCase("spawn") || player.hasPermission("growapet.admin.boss");
             case "growapet" -> authorizedGrowAPet(player, tokens);
             default -> true;

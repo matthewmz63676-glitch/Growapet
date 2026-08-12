@@ -49,6 +49,7 @@ public final class MobRewards {
         plugin.getQuestManager().record(killer.getUniqueId(), QuestType.COINS_EARNED, awardedCoins, null);
         plugin.getQuestManager().record(killer.getUniqueId(), QuestType.GEMS_EARNED, awardedGems, null);
         plugin.getCreditMilestoneManager().evaluate(killer.getUniqueId());
+        plugin.getTutorialManager().notifyAction(killer, me.growapet.tutorial.TutorialAction.MOB_KILL);
 
         plugin.getActionBarManager().showTemporary(
                 killer,

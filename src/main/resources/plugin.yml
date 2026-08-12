@@ -76,6 +76,9 @@ commands:
   daily:
     description: Claim the free 24-hour Credit reward
     usage: /daily
+  tutorial:
+    description: Start or manage the GrowAPet onboarding tutorial
+    usage: /tutorial [start|stop] or /tutorial <start|stop|reset> <player>
 
 permissions:
   growapet.admin:
@@ -93,6 +96,8 @@ permissions:
       growapet.admin.bypass: true
       growapet.admin.leaderboards: true
       growapet.command-blacklist.bypass: true
+      growapet.admin.tutorial: true
+      growapet.tutorial: true
   growapet.admin.reload: { default: op }
   growapet.admin.economy: { default: op }
   growapet.admin.give: { default: op }
@@ -106,6 +111,12 @@ permissions:
   growapet.command-blacklist.bypass:
     description: Bypass GrowAPet's player command blacklist
     default: op
+  growapet.admin.tutorial:
+    description: Start, stop, or reset another player's tutorial
+    default: op
+  growapet.tutorial:
+    description: Use the GrowAPet tutorial
+    default: true
   growapet.chat.color:
     description: Use & colour codes and #RRGGBB hex codes in chat
     default: op
