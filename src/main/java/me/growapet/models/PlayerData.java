@@ -1,9 +1,3 @@
-/*
- * Decompiled with CFR 0.152.
- * 
- * Could not load the following classes:
- *  lombok.Generated
- */
 package me.growapet.models;
 
 import java.util.LinkedHashMap;
@@ -11,51 +5,38 @@ import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import lombok.Generated;
 
-public class PlayerData {
+/** Mutable cached player state. All mutations are performed on the server thread. */
+public final class PlayerData {
     private final UUID uuid;
     private String name;
     private long coins;
     private long gems;
     private long credits;
     private int level = 1;
-    private long exp = 0L;
+    private long exp;
     private double expMultiplier = 1.0;
     private double coinMultiplier = 1.0;
     private double gemMultiplier = 1.0;
     private double damageMultiplier = 1.0;
-    private double criticalChance = 0.0;
+    private double criticalChance;
     private double criticalDamage = 1.5;
-    private long mobKills = 0L;
-    private long bossKills = 0L;
-    private long eggsHatched = 0L;
-    private long petsCollected = 0L;
-    private long trades = 0L;
-    private long questsCompleted = 0L;
-    private long playtimeSeconds = 0L;
+    private double petPower;
+    private long mobKills;
+    private long bossKills;
+    private double bossDamage;
+    private long eggsHatched;
+    private long petsCollected;
+    private long trades;
+    private long questsCompleted;
+    private long playtimeSeconds;
+    private int highestPetLevel;
     private String activePetUuid;
-    private final Set<String> unlockedZones = new LinkedHashSet<String>();
-    private final Map<String, Integer> shopLevels = new LinkedHashMap<String, Integer>();
-    private boolean dirty = false;
-
-    public boolean hasUnlockedZone(String zoneId) {
-        return this.unlockedZones.contains(zoneId);
-    }
-
-    public void unlockZone(String zoneId) {
-        this.unlockedZones.add(zoneId);
-        this.dirty = true;
-    }
-
-    public int getShopLevel(String upgradeId) {
-        return this.shopLevels.getOrDefault(upgradeId, 0);
-    }
-
-    public void setShopLevel(String upgradeId, int level) {
-        this.shopLevels.put(upgradeId, level);
-        this.dirty = true;
-    }
+    private final Set<String> unlockedZones = new LinkedHashSet<>();
+    private final Map<String, Integer> shopLevels = new LinkedHashMap<>();
+    private boolean dirty;
+    private long revision;
+    private boolean economyLocked;
 
     public PlayerData(UUID uuid, String name) {
         this.uuid = uuid;
@@ -63,288 +44,138 @@ public class PlayerData {
     }
 
     public static long expToLevelUp(int level) {
-        return Math.round(50.0 * Math.pow(level, 1.5)) + 100L;
+        return Math.round(50.0 * Math.pow(Math.max(1, level), 1.5)) + 100L;
     }
 
     public double getExpProgress() {
-        long required = PlayerData.expToLevelUp(this.level);
-        if (required <= 0L) {
-            return 0.0;
-        }
-        return Math.min(1.0, (double)this.exp / (double)required);
+        return Math.min(1.0, Math.max(0.0, (double) exp / expToLevelUp(level)));
     }
 
     public void addExp(long amount) {
-        if (amount <= 0L) {
-            return;
+        long adjusted = scaledPositive(amount, expMultiplier);
+        if (adjusted == 0L) return;
+        exp = safeAdd(exp, adjusted);
+        while (exp >= expToLevelUp(level) && level < Integer.MAX_VALUE) {
+            exp -= expToLevelUp(level);
+            level++;
         }
-        this.exp += Math.round((double)amount * this.expMultiplier);
-        this.dirty = true;
-        long required = PlayerData.expToLevelUp(this.level);
-        while (this.exp >= required) {
-            this.exp -= required;
-            ++this.level;
-            required = PlayerData.expToLevelUp(this.level);
-        }
+        touch();
     }
 
-    public void addCoins(long amount) {
-        if (amount <= 0L) {
-            return;
-        }
-        this.coins += Math.round((double)amount * this.coinMultiplier);
-        this.dirty = true;
+    public void normalizeExperience() {
+        while (exp >= expToLevelUp(level) && level < Integer.MAX_VALUE) { exp -= expToLevelUp(level); level++; touch(); }
     }
 
-    public void addGems(long amount) {
-        if (amount <= 0L) {
-            return;
-        }
-        this.gems += Math.round((double)amount * this.gemMultiplier);
-        this.dirty = true;
-    }
+    public void addCoins(long amount) { addCoinsRaw(scaledPositive(amount, coinMultiplier)); }
+    public void addGems(long amount) { addGemsRaw(scaledPositive(amount, gemMultiplier)); }
+    public void addCredits(long amount) { if (amount > 0) { credits = safeAdd(credits, amount); touch(); } }
+    public void addCoinsRaw(long amount) { if (amount > 0) { coins = safeAdd(coins, amount); touch(); } }
+    public void addGemsRaw(long amount) { if (amount > 0) { gems = safeAdd(gems, amount); touch(); } }
 
     public boolean removeCoins(long amount) {
-        if (this.coins < amount) {
-            return false;
-        }
-        this.coins -= amount;
-        this.dirty = true;
+        if (amount < 0 || coins < amount) return false;
+        coins -= amount;
+        touch();
         return true;
     }
 
     public boolean removeGems(long amount) {
-        if (this.gems < amount) {
-            return false;
-        }
-        this.gems -= amount;
-        this.dirty = true;
+        if (amount < 0 || gems < amount) return false;
+        gems -= amount;
+        touch();
         return true;
     }
 
-    @Generated
-    public UUID getUuid() {
-        return this.uuid;
+    public boolean removeCredits(long amount) {
+        if (amount < 0 || credits < amount) return false;
+        credits -= amount;
+        touch();
+        return true;
     }
 
-    @Generated
-    public String getName() {
-        return this.name;
+    public boolean hasUnlockedZone(String zoneId) { return unlockedZones.contains(zoneId); }
+    public void unlockZone(String zoneId) { if (zoneId != null && unlockedZones.add(zoneId)) touch(); }
+    public void revokeZone(String zoneId){if(unlockedZones.remove(zoneId))touch();}
+    public boolean tryLockEconomy(){if(economyLocked)return false;economyLocked=true;return true;}public void unlockEconomy(){economyLocked=false;}public boolean isEconomyLocked(){return economyLocked;}
+    public int getShopLevel(String id) { return shopLevels.getOrDefault(id, 0); }
+    public void setShopLevel(String id, int value) { shopLevels.put(id, Math.max(0, value)); touch(); }
+    public void incrementMobKills() { mobKills = safeAdd(mobKills, 1); touch(); }
+    public void incrementBossKills() { bossKills = safeAdd(bossKills, 1); touch(); }
+    public void incrementEggsHatched() { eggsHatched = safeAdd(eggsHatched, 1); touch(); }
+    public void incrementPetsCollected() { petsCollected = safeAdd(petsCollected, 1); touch(); }
+    public void incrementTrades() { trades = safeAdd(trades, 1); touch(); }
+    public void incrementQuestsCompleted() { questsCompleted = safeAdd(questsCompleted, 1); touch(); }
+    public void addBossDamage(double amount) { if (Double.isFinite(amount) && amount > 0) { bossDamage += amount; touch(); } }
+    public void addPlaytime(long seconds) { if (seconds > 0) { playtimeSeconds = safeAdd(playtimeSeconds, seconds); touch(); } }
+
+    private static long scaledPositive(long amount, double multiplier) {
+        if (amount <= 0 || !Double.isFinite(multiplier) || multiplier <= 0) return 0;
+        double scaled = amount * multiplier;
+        return scaled >= Long.MAX_VALUE ? Long.MAX_VALUE : Math.max(0L, Math.round(scaled));
     }
 
-    @Generated
-    public long getCoins() {
-        return this.coins;
+    private static long safeAdd(long current, long amount) {
+        if (amount <= 0) return current;
+        return current > Long.MAX_VALUE - amount ? Long.MAX_VALUE : current + amount;
     }
 
-    @Generated
-    public long getGems() {
-        return this.gems;
-    }
+    private void touch() { dirty = true; revision++; }
 
-    @Generated
-    public long getCredits() {
-        return this.credits;
-    }
+    public UUID getUuid() { return uuid; }
+    public String getName() { return name; }
+    public long getCoins() { return coins; }
+    public long getGems() { return gems; }
+    public long getCredits() { return credits; }
+    public int getLevel() { return level; }
+    public long getExp() { return exp; }
+    public double getExpMultiplier() { return expMultiplier; }
+    public double getCoinMultiplier() { return coinMultiplier; }
+    public double getGemMultiplier() { return gemMultiplier; }
+    public double getDamageMultiplier() { return damageMultiplier; }
+    public double getCriticalChance() { return criticalChance; }
+    public double getCriticalDamage() { return criticalDamage; }
+    public double getPetPower() { return petPower; }
+    public long getMobKills() { return mobKills; }
+    public long getBossKills() { return bossKills; }
+    public double getBossDamage() { return bossDamage; }
+    public long getEggsHatched() { return eggsHatched; }
+    public long getPetsCollected() { return petsCollected; }
+    public long getTrades() { return trades; }
+    public long getQuestsCompleted() { return questsCompleted; }
+    public long getPlaytimeSeconds() { return playtimeSeconds; }
+    public int getHighestPetLevel() { return highestPetLevel; }
+    public String getActivePetUuid() { return activePetUuid; }
+    public Set<String> getUnlockedZones() { return unlockedZones; }
+    public Map<String, Integer> getShopLevels() { return shopLevels; }
+    public boolean isDirty() { return dirty; }
+    public long getRevision() { return revision; }
 
-    @Generated
-    public int getLevel() {
-        return this.level;
-    }
+    public void setName(String value) { if (value != null && !value.equals(name)) { name = value; touch(); } }
+    public void setCoins(long value) { coins = Math.max(0, value); touch(); }
+    public void setGems(long value) { gems = Math.max(0, value); touch(); }
+    public void setCredits(long value) { credits = Math.max(0, value); touch(); }
+    public void setLevel(int value) { level = Math.max(1, value); touch(); }
+    public void setExp(long value) { exp = Math.max(0, value); touch(); }
+    public void setExpMultiplier(double value) { expMultiplier = saneMultiplier(value); touch(); }
+    public void setCoinMultiplier(double value) { coinMultiplier = saneMultiplier(value); touch(); }
+    public void setGemMultiplier(double value) { gemMultiplier = saneMultiplier(value); touch(); }
+    public void setDamageMultiplier(double value) { damageMultiplier = saneMultiplier(value); touch(); }
+    public void setCriticalChance(double value) { criticalChance = Double.isFinite(value) ? Math.max(0, Math.min(1, value)) : 0; touch(); }
+    public void setCriticalDamage(double value) { criticalDamage = saneMultiplier(value); touch(); }
+    public void setPetPower(double value) { petPower = Double.isFinite(value) ? Math.max(0, value) : 0; touch(); }
+    public void setMobKills(long value) { mobKills = Math.max(0, value); touch(); }
+    public void setBossKills(long value) { bossKills = Math.max(0, value); touch(); }
+    public void setBossDamage(double value) { bossDamage = Double.isFinite(value) ? Math.max(0, value) : 0; touch(); }
+    public void setEggsHatched(long value) { eggsHatched = Math.max(0, value); touch(); }
+    public void setPetsCollected(long value) { petsCollected = Math.max(0, value); touch(); }
+    public void setTrades(long value) { trades = Math.max(0, value); touch(); }
+    public void setQuestsCompleted(long value) { questsCompleted = Math.max(0, value); touch(); }
+    public void setPlaytimeSeconds(long value) { playtimeSeconds = Math.max(0, value); touch(); }
+    public void setHighestPetLevel(int value) { highestPetLevel = Math.max(0, value); touch(); }
+    public void setActivePetUuid(String value) { activePetUuid = value; touch(); }
+    public void setDirty(boolean value) { dirty = value; }
 
-    @Generated
-    public long getExp() {
-        return this.exp;
-    }
-
-    @Generated
-    public double getExpMultiplier() {
-        return this.expMultiplier;
-    }
-
-    @Generated
-    public double getCoinMultiplier() {
-        return this.coinMultiplier;
-    }
-
-    @Generated
-    public double getGemMultiplier() {
-        return this.gemMultiplier;
-    }
-
-    @Generated
-    public double getDamageMultiplier() {
-        return this.damageMultiplier;
-    }
-
-    @Generated
-    public double getCriticalChance() {
-        return this.criticalChance;
-    }
-
-    @Generated
-    public double getCriticalDamage() {
-        return this.criticalDamage;
-    }
-
-    @Generated
-    public long getMobKills() {
-        return this.mobKills;
-    }
-
-    @Generated
-    public long getBossKills() {
-        return this.bossKills;
-    }
-
-    @Generated
-    public long getEggsHatched() {
-        return this.eggsHatched;
-    }
-
-    @Generated
-    public long getPetsCollected() {
-        return this.petsCollected;
-    }
-
-    @Generated
-    public long getTrades() {
-        return this.trades;
-    }
-
-    @Generated
-    public long getQuestsCompleted() {
-        return this.questsCompleted;
-    }
-
-    @Generated
-    public long getPlaytimeSeconds() {
-        return this.playtimeSeconds;
-    }
-
-    @Generated
-    public String getActivePetUuid() {
-        return this.activePetUuid;
-    }
-
-    @Generated
-    public Set<String> getUnlockedZones() {
-        return this.unlockedZones;
-    }
-
-    @Generated
-    public Map<String, Integer> getShopLevels() {
-        return this.shopLevels;
-    }
-
-    @Generated
-    public boolean isDirty() {
-        return this.dirty;
-    }
-
-    @Generated
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    @Generated
-    public void setCoins(long coins) {
-        this.coins = coins;
-    }
-
-    @Generated
-    public void setGems(long gems) {
-        this.gems = gems;
-    }
-
-    @Generated
-    public void setCredits(long credits) {
-        this.credits = credits;
-    }
-
-    @Generated
-    public void setLevel(int level) {
-        this.level = level;
-    }
-
-    @Generated
-    public void setExp(long exp) {
-        this.exp = exp;
-    }
-
-    @Generated
-    public void setExpMultiplier(double expMultiplier) {
-        this.expMultiplier = expMultiplier;
-    }
-
-    @Generated
-    public void setCoinMultiplier(double coinMultiplier) {
-        this.coinMultiplier = coinMultiplier;
-    }
-
-    @Generated
-    public void setGemMultiplier(double gemMultiplier) {
-        this.gemMultiplier = gemMultiplier;
-    }
-
-    @Generated
-    public void setDamageMultiplier(double damageMultiplier) {
-        this.damageMultiplier = damageMultiplier;
-    }
-
-    @Generated
-    public void setCriticalChance(double criticalChance) {
-        this.criticalChance = criticalChance;
-    }
-
-    @Generated
-    public void setCriticalDamage(double criticalDamage) {
-        this.criticalDamage = criticalDamage;
-    }
-
-    @Generated
-    public void setMobKills(long mobKills) {
-        this.mobKills = mobKills;
-    }
-
-    @Generated
-    public void setBossKills(long bossKills) {
-        this.bossKills = bossKills;
-    }
-
-    @Generated
-    public void setEggsHatched(long eggsHatched) {
-        this.eggsHatched = eggsHatched;
-    }
-
-    @Generated
-    public void setPetsCollected(long petsCollected) {
-        this.petsCollected = petsCollected;
-    }
-
-    @Generated
-    public void setTrades(long trades) {
-        this.trades = trades;
-    }
-
-    @Generated
-    public void setQuestsCompleted(long questsCompleted) {
-        this.questsCompleted = questsCompleted;
-    }
-
-    @Generated
-    public void setPlaytimeSeconds(long playtimeSeconds) {
-        this.playtimeSeconds = playtimeSeconds;
-    }
-
-    @Generated
-    public void setActivePetUuid(String activePetUuid) {
-        this.activePetUuid = activePetUuid;
-    }
-
-    @Generated
-    public void setDirty(boolean dirty) {
-        this.dirty = dirty;
+    private static double saneMultiplier(double value) {
+        return Double.isFinite(value) ? Math.max(0, value) : 1.0;
     }
 }
-

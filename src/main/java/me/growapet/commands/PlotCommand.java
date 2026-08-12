@@ -37,8 +37,10 @@ implements CommandExecutor {
                 player.sendMessage("\u00a7cYou don't have a plot yet.");
                 return true;
             }
-            player.teleport(plot.getCenter());
-            player.sendMessage("\u00a7aTeleported to your plot.");
+            this.plugin.getPlotManager().teleportHome(player, plot).thenAccept(success -> {
+                if (success) me.growapet.utils.Messages.send(player, "<green>Teleported to your plot.</green>");
+                else me.growapet.utils.Messages.send(player, "<red>Unable to teleport to your plot safely.</red>");
+            });
             return true;
         }
         if (args[0].equalsIgnoreCase("settings")) {
@@ -49,4 +51,3 @@ implements CommandExecutor {
         return true;
     }
 }
-

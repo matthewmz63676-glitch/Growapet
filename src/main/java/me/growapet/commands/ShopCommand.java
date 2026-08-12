@@ -11,6 +11,7 @@ package me.growapet.commands;
 
 import me.growapet.GrowAPet;
 import me.growapet.gui.ShopMenu;
+import me.growapet.gui.EggShopMenu;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -30,8 +31,8 @@ implements CommandExecutor {
             return true;
         }
         Player player = (Player)sender;
-        new ShopMenu(this.plugin, player).open();
+        if (args.length > 0 && args[0].equalsIgnoreCase("eggs")) new EggShopMenu(this.plugin, player).open();
+        else new ShopMenu(this.plugin, player).open();
         return true;
     }
 }
-

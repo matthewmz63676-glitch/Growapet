@@ -1,76 +1,50 @@
-/*
- * Decompiled with CFR 0.152.
- * 
- * Could not load the following classes:
- *  org.bukkit.Bukkit
- *  org.bukkit.configuration.file.FileConfiguration
- *  org.bukkit.entity.Player
- */
 package me.growapet.store;
 
-import java.text.NumberFormat;
-import java.util.Locale;
-import java.util.Random;
 import me.growapet.GrowAPet;
-import me.growapet.hud.IconResolver;
 import me.growapet.models.PlayerData;
-import me.growapet.store.StoreOffer;
-import me.growapet.utils.Utils;
 import org.bukkit.Bukkit;
-import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
 
-public class StoreManager {
-    private static final NumberFormat FORMAT = NumberFormat.getIntegerInstance(Locale.US);
-    private final Random random = new Random();
+import java.sql.PreparedStatement;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+
+public final class StoreManager {
     private final GrowAPet plugin;
-
-    public StoreManager(GrowAPet plugin) {
-        this.plugin = plugin;
-    }
-
-    public boolean canAfford(PlayerData data, StoreOffer offer) {
-        return data.getCredits() >= offer.getCreditPrice();
-    }
+    private final Set<UUID> busy = ConcurrentHashMap.newKeySet();
+    public StoreManager(GrowAPet plugin) { this.plugin=plugin; }
+    public boolean canAfford(PlayerData data, StoreOffer offer) { return data.getCredits()>=offer.getCreditPrice(); }
 
     public boolean purchase(Player player, StoreOffer offer) {
-        PlayerData data = this.plugin.getPlayerManager().get(player);
-        if (data == null) {
-            return false;
-        }
-        if (data.getCredits() < offer.getCreditPrice()) {
-            player.sendMessage("\u00a7cYou need \u00a7e" + offer.getCreditPrice() + " Credits \u00a7cfor " + offer.getDisplayName() + "!");
-            return false;
-        }
-        data.setCredits(data.getCredits() - offer.getCreditPrice());
-        data.setDirty(true);
-        switch (offer) {
-            case COIN_SURGE: {
-                data.addCoins(5000L);
-                break;
+        UUID playerId=player.getUniqueId();
+        PlayerData data=plugin.getPlayerManager().get(playerId);
+        if(data==null||!canAfford(data,offer)||!data.tryLockEconomy()) return false;
+        if(!busy.add(playerId)){data.unlockEconomy();return false;}
+        data.removeCredits(offer.getCreditPrice());
+        String receipt=UUID.randomUUID().toString();
+        Long boostExpiry=offer.isBoost()?System.currentTimeMillis()+offer.boostDurationMillis():null;
+        plugin.getDatabase().transaction(connection->{
+            try(PreparedStatement debit=connection.prepareStatement("UPDATE players SET credits=credits-? WHERE uuid=? AND credits>=?")){
+                debit.setLong(1,offer.getCreditPrice());debit.setString(2,playerId.toString());debit.setLong(3,offer.getCreditPrice());
+                if(debit.executeUpdate()!=1)throw new IllegalStateException("Insufficient credits");
             }
-            case GEM_SURGE: {
-                data.addGems(250L);
-                break;
+            if(offer.isBoost()) plugin.getPlotBoostManager().insert(connection,receipt,playerId,offer.getBoostType(),offer.getBoostBonus(),boostExpiry,"CREDIT_STORE");
+            else try(PreparedStatement setting=connection.prepareStatement("INSERT INTO settings(player_uuid,setting_key,setting_value)VALUES(?,?,?) ON CONFLICT(player_uuid,setting_key)DO UPDATE SET setting_value=excluded.setting_value")){
+                setting.setString(1,playerId.toString());setting.setString(2,offer.getSetting());setting.setString(3,offer.getValue());setting.executeUpdate();
             }
-            case MYSTERY_CRATE: {
-                long bonusCoins = 1000 + this.random.nextInt(9000);
-                long bonusGems = 50 + this.random.nextInt(200);
-                data.addCoins(bonusCoins);
-                data.addGems(bonusGems);
-                player.sendMessage("\u00a7dYour Mystery Crate contained \u00a76" + FORMAT.format(bonusCoins) + " coins \u00a7dand \u00a7a" + FORMAT.format(bonusGems) + " gems\u00a7d!");
+            try(PreparedStatement transaction=connection.prepareStatement("INSERT INTO economy_transactions(id,player_uuid,kind,credits_delta,created_at)VALUES(?,?,?,-?,?)")){
+                transaction.setString(1,receipt);transaction.setString(2,playerId.toString());transaction.setString(3,"CREDIT_STORE:"+offer.name());transaction.setLong(4,offer.getCreditPrice());transaction.setLong(5,System.currentTimeMillis());transaction.executeUpdate();
             }
-        }
-        player.sendMessage("\u00a7aPurchased \u00a7e" + offer.getDisplayName() + "\u00a7a!");
-        this.broadcastPurchase(player, offer);
+            return null;
+        }).whenComplete((ignored,error)->Bukkit.getScheduler().runTask(plugin,()->{
+            busy.remove(playerId);
+            data.unlockEconomy();
+            if(error!=null){data.addCredits(offer.getCreditPrice());if(player.isOnline())player.sendMessage("§cPurchase failed safely.");return;}
+            if(offer.isBoost())plugin.getPlotBoostManager().cache(receipt,playerId,offer.getBoostType(),offer.getBoostBonus(),boostExpiry,"CREDIT_STORE");
+            else plugin.getOptionsManager().cache(playerId,offer.getSetting(),offer.getValue());
+            if(player.isOnline())me.growapet.utils.Messages.send(player,"<green>Purchased <yellow><offer></yellow>.</green>",me.growapet.utils.Messages.value("offer",offer.getDisplayName()));
+        }));
         return true;
     }
-
-    private void broadcastPurchase(Player player, StoreOffer offer) {
-        FileConfiguration hud = this.plugin.getConfigManager().hud();
-        String template = "&8[&7\u2620&8] &f" + player.getName() + " &7just purchased &e" + offer.getDisplayName() + " &7for %icon_credit%&b" + FORMAT.format(offer.getCreditPrice()) + " Credits&7!";
-        String message = Utils.colorize(IconResolver.apply(hud, template));
-        Bukkit.broadcastMessage((String)message);
-    }
 }
-

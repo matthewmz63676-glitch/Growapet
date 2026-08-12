@@ -1,20 +1,60 @@
-# Quest definitions. QuestManager is not implemented yet — this schema is
-# the intended shape once it is.
+# Quest definitions. Daily and weekly periods reset at UTC boundaries.
 daily:
   kill_mobs:
     display-name: "Kill 50 mobs"
     type: MOB_KILLS
     amount: 50
     reward-coins: 200
+    reward-credits: 1
     reward-exp: 100
 
+  earn_gems:
+    display-name: "Earn 25 Gems"
+    type: GEMS_EARNED
+    amount: 25
+    reward-credits: 1
+    reward-exp: 125
+
+  hatch_an_egg:
+    display-name: "Hatch an Egg"
+    type: EGGS_HATCHED
+    amount: 1
+    reward-coins: 150
+    reward-credits: 1
+    reward-exp: 100
+
+  earn_coins:
+    display-name: "Earn 1,000 Coins"
+    type: COINS_EARNED
+    amount: 1000
+    reward-gems: 10
+    reward-credits: 1
+    reward-exp: 150
+
 weekly:
+  slay_mobs:
+    display-name: "Defeat 500 Mobs"
+    type: MOB_KILLS
+    amount: 500
+    reward-coins: 5000
+    reward-credits: 5
+    reward-exp: 1500
+
   hatch_eggs:
     display-name: "Hatch 20 eggs"
     type: EGGS_HATCHED
     amount: 20
     reward-gems: 50
+    reward-credits: 5
     reward-exp: 500
+
+  defeat_bosses:
+    display-name: "Defeat 3 Bosses"
+    type: BOSS_KILL
+    amount: 3
+    reward-gems: 150
+    reward-credits: 5
+    reward-exp: 2500
 
 story:
   reach_desert:
@@ -22,8 +62,8 @@ story:
     type: ZONE_UNLOCK
     zone: desert
     reward-credits: 5
-  defeat_forest_boss:
-    display-name: "Defeat the Forest Boss"
+  defeat_plains_boss:
+    display-name: "Defeat the Plains Boss"
     type: BOSS_KILL
-    boss: forest_boss
+    boss: plains_boss
     reward-credits: 10

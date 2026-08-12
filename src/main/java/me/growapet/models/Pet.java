@@ -13,7 +13,7 @@ import org.bukkit.entity.EntityType;
 
 public class Pet {
     private final UUID uuid;
-    private final UUID owner;
+    private UUID owner;
     private EntityType entityType;
     private String displayName;
     private Rarity rarity;
@@ -26,6 +26,11 @@ public class Pet {
     private String skin;
     private boolean equipped = false;
     private boolean placed = false;
+    private UUID entityUuid;
+    private String world;
+    private double x;
+    private double y;
+    private double z;
 
     public Pet(UUID uuid, UUID owner, EntityType entityType, Rarity rarity, int size) {
         this.uuid = uuid;
@@ -44,17 +49,25 @@ public class Pet {
         if (amount <= 0L) {
             return;
         }
-        this.exp += amount;
+        this.exp = this.exp > Long.MAX_VALUE - amount ? Long.MAX_VALUE : this.exp + amount;
         long required = Pet.expToLevelUp(this.level);
-        while (this.exp >= required) {
+        while (this.exp >= required && this.level < Integer.MAX_VALUE) {
             this.exp -= required;
             ++this.level;
-            this.damageMultiplier += 0.01;
-            this.coinMultiplier += 0.005;
-            this.gemMultiplier += 0.005;
+            this.damageMultiplier = Math.min(1_000_000.0, this.damageMultiplier + 0.01);
+            this.coinMultiplier = Math.min(1_000_000.0, this.coinMultiplier + 0.005);
+            this.gemMultiplier = Math.min(1_000_000.0, this.gemMultiplier + 0.005);
             required = Pet.expToLevelUp(this.level);
         }
     }
+
+    public UUID getEntityUuid() { return entityUuid; }
+    public String getWorld() { return world; }
+    public double getX() { return x; }
+    public double getY() { return y; }
+    public double getZ() { return z; }
+    public void setEntityUuid(UUID entityUuid) { this.entityUuid = entityUuid; }
+    public void setLocation(String world, double x, double y, double z) { this.world = world; this.x = x; this.y = y; this.z = z; }
 
     public static String sizeTierName(int size) {
         if (size < 10) {
@@ -93,6 +106,8 @@ public class Pet {
     public UUID getOwner() {
         return this.owner;
     }
+
+    public void setOwner(UUID owner) { this.owner = owner; }
 
     @Generated
     public EntityType getEntityType() {
@@ -176,27 +191,27 @@ public class Pet {
 
     @Generated
     public void setLevel(int level) {
-        this.level = level;
+        this.level = Math.max(1, level);
     }
 
     @Generated
     public void setExp(long exp) {
-        this.exp = exp;
+        this.exp = Math.max(0, exp);
     }
 
     @Generated
     public void setDamageMultiplier(double damageMultiplier) {
-        this.damageMultiplier = damageMultiplier;
+        this.damageMultiplier = saneMultiplier(damageMultiplier);
     }
 
     @Generated
     public void setCoinMultiplier(double coinMultiplier) {
-        this.coinMultiplier = coinMultiplier;
+        this.coinMultiplier = saneMultiplier(coinMultiplier);
     }
 
     @Generated
     public void setGemMultiplier(double gemMultiplier) {
-        this.gemMultiplier = gemMultiplier;
+        this.gemMultiplier = saneMultiplier(gemMultiplier);
     }
 
     @Generated
@@ -226,5 +241,6 @@ public class Pet {
         EXCLUSIVE;
 
     }
-}
 
+    private static double saneMultiplier(double value) { return Double.isFinite(value) ? Math.max(0.0, Math.min(1_000_000.0, value)) : 1.0; }
+}

@@ -71,10 +71,6 @@ implements Listener {
             player.sendMessage("\u00a7cYou already have the maximum of \u00a7e" + limit + " \u00a7ceggs incubating.");
             return;
         }
-        int seconds = this.plugin.getEggManager().getIncubateSeconds(item);
-        item.setAmount(item.getAmount() - 1);
-        this.plugin.getEggIncubationManager().startIncubation(player, entityType, seconds, placeAt);
-        player.sendMessage("\u00a7aEgg placed! It will hatch in " + seconds + " seconds.");
+        this.plugin.getEggIncubationManager().place(player, item.clone(), placeAt);
     }
 }
-

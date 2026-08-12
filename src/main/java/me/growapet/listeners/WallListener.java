@@ -65,7 +65,7 @@ implements Listener {
     }
 
     private void guard(Player player, Location to, Location from, Cancellable event) {
-        if (to == null || player.hasPermission("growapet.admin")) {
+        if (to == null || player.hasPermission("growapet.admin.bypass")) {
             return;
         }
         if (this.plugin.getWallManager().isInsideLockedWall(player, to)) {
@@ -75,7 +75,7 @@ implements Listener {
 
     @EventHandler(ignoreCancelled=true)
     public void onBreak(BlockBreakEvent event) {
-        if (this.plugin.getWallManager().isInsideLockedWall(event.getPlayer(), event.getBlock().getLocation()) && !event.getPlayer().hasPermission("growapet.admin")) {
+        if (this.plugin.getWallManager().isInsideLockedWall(event.getPlayer(), event.getBlock().getLocation()) && !event.getPlayer().hasPermission("growapet.admin.bypass")) {
             event.setCancelled(true);
         }
     }
@@ -95,4 +95,3 @@ implements Listener {
         }
     }
 }
-

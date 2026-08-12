@@ -1,104 +1,208 @@
-/*
- * Decompiled with CFR 0.152.
- * 
- * Could not load the following classes:
- *  org.bukkit.entity.EntityType
- */
 package me.growapet.pets;
+
+import me.growapet.GrowAPet;
+import me.growapet.display.VirtualPetService;
+import me.growapet.models.Pet;
+import me.growapet.models.PlayerData;
+import me.growapet.models.Plot;
+import org.bukkit.Bukkit;
+import org.bukkit.Location;
+import org.bukkit.NamespacedKey;
+import org.bukkit.entity.Entity;
+import org.bukkit.entity.EntityType;
+import org.bukkit.persistence.PersistentDataType;
 
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
-import me.growapet.GrowAPet;
-import me.growapet.models.Pet;
-import org.bukkit.entity.EntityType;
+import java.util.concurrent.ThreadLocalRandom;
 
-public class PetManager {
+public final class PetManager {
     private final GrowAPet plugin;
-    private final Map<UUID, List<Pet>> ownerPets = new ConcurrentHashMap<UUID, List<Pet>>();
+    private final Map<UUID, List<Pet>> ownerPets = new ConcurrentHashMap<>();
+    private final NamespacedKey petIdKey;
+    private final VirtualPetService virtualPets;
 
     public PetManager(GrowAPet plugin) {
         this.plugin = plugin;
+        this.petIdKey = new NamespacedKey(plugin, "pet_uuid");
+        this.virtualPets = new VirtualPetService(plugin);
     }
 
-    public List<Pet> getPets(UUID owner) {
-        return this.ownerPets.computeIfAbsent(owner, k -> new CopyOnWriteArrayList());
+    public List<Pet> getPets(UUID owner) { return ownerPets.computeIfAbsent(owner, ignored -> new CopyOnWriteArrayList<>()); }
+    public Pet getPet(UUID owner, UUID petId) { return getPets(owner).stream().filter(p -> p.getUuid().equals(petId)).findFirst().orElse(null); }
+    /** Recognizes and protects legacy physical pet entities during their cleanup window. */
+    public boolean isPet(Entity entity) { return entity.getPersistentDataContainer().has(petIdKey, PersistentDataType.STRING); }
+
+    public CompletableFuture<Pet> hatch(UUID owner, EntityType entityType) {
+        Pet pet;
+        try { pet = createHatchCandidate(owner, entityType); }
+        catch (IllegalArgumentException error) { return CompletableFuture.failedFuture(error); }
+        return save(pet).thenCompose(ignored -> onMain(() -> {
+            registerHatched(pet);
+            return pet;
+        }));
     }
 
-    public Pet hatch(UUID owner, EntityType entityType) {
-        Pet.Rarity rarity = this.rollRarity();
-        int size = this.rollSize(rarity);
-        Pet pet = new Pet(UUID.randomUUID(), owner, entityType, rarity, size);
-        this.getPets(owner).add(pet);
-        this.save(pet);
-        return pet;
+    public Pet createHatchCandidate(UUID owner, EntityType entityType) {
+        requireMain();
+        if (!isSupported(entityType)) throw new IllegalArgumentException("Unsupported pet entity " + entityType);
+        Pet.Rarity rarity = rollRarity();
+        return new Pet(UUID.randomUUID(), owner, entityType, rarity, rollSize(rarity));
     }
+
+    public void registerHatched(Pet pet) { requireMain(); if (getPet(pet.getOwner(), pet.getUuid()) == null) getPets(pet.getOwner()).add(pet); }
 
     private Pet.Rarity rollRarity() {
-        double roll = Math.random() * 100.0;
-        double cumulative = 0.0;
-        double[] weights = new double[]{45.0, 25.0, 15.0, 8.0, 4.0, 2.0, 0.7, 0.25, 0.05};
-        Pet.Rarity[] rarities = Pet.Rarity.values();
-        for (int i = 0; i < rarities.length; ++i) {
-            if (!(roll <= (cumulative += weights[i]))) continue;
-            return rarities[i];
+        double total = 0;
+        for (Pet.Rarity rarity : Pet.Rarity.values()) total += Math.max(0, plugin.getConfigManager().pets().getDouble("rarities." + rarity.name() + ".weight", 0));
+        if (total <= 0) return Pet.Rarity.COMMON;
+        double roll = ThreadLocalRandom.current().nextDouble(total);
+        for (Pet.Rarity rarity : Pet.Rarity.values()) {
+            roll -= Math.max(0, plugin.getConfigManager().pets().getDouble("rarities." + rarity.name() + ".weight", 0));
+            if (roll <= 0) {
+                if (plugin.getEventManager().isActive(me.growapet.events.EventType.LUCKY_EGG)) return Pet.Rarity.values()[Math.min(Pet.Rarity.values().length-1,rarity.ordinal()+1)];
+                return rarity;
+            }
         }
         return Pet.Rarity.COMMON;
     }
 
-    public int rollSize(Pet.Rarity rarity) {
-        double exponent = Math.max(2.5, 5.5 - (double)rarity.ordinal() * 0.3);
-        double roll = Math.pow(Math.random(), exponent);
-        int size = 1 + (int)(999.0 * roll);
-        return Math.max(1, Math.min(1000, size));
+    private int rollSize(Pet.Rarity rarity) {
+        int[] range = switch (rarity) {
+            case COMMON -> new int[]{1, 100};
+            case UNCOMMON -> new int[]{101, 250};
+            case RARE -> new int[]{251, 450};
+            case EPIC -> new int[]{451, 650};
+            case LEGENDARY -> new int[]{651, 850};
+            case MYTHIC -> new int[]{851, 930};
+            case DIVINE -> new int[]{931, 970};
+            case SECRET -> new int[]{971, 995};
+            case EXCLUSIVE -> new int[]{996, 1000};
+        };
+        return ThreadLocalRandom.current().nextInt(range[0], range[1] + 1);
     }
 
-    public void save(Pet pet) {
-        this.plugin.getDatabase().async(connection -> {
-            try (PreparedStatement ps = connection.prepareStatement("INSERT OR REPLACE INTO pets (uuid, owner, entity_type, display_name, rarity, size_int,\nlevel, exp, damage_multiplier, coin_multiplier, gem_multiplier, skin, equipped)\nVALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)\n");){
-                ps.setString(1, pet.getUuid().toString());
-                ps.setString(2, pet.getOwner().toString());
-                ps.setString(3, pet.getEntityType().name());
-                ps.setString(4, pet.getDisplayName());
-                ps.setString(5, pet.getRarity().name());
-                ps.setInt(6, pet.getSize());
-                ps.setInt(7, pet.getLevel());
-                ps.setLong(8, pet.getExp());
-                ps.setDouble(9, pet.getDamageMultiplier());
-                ps.setDouble(10, pet.getCoinMultiplier());
-                ps.setDouble(11, pet.getGemMultiplier());
-                ps.setString(12, pet.getSkin());
-                ps.setInt(13, pet.isEquipped() ? 1 : 0);
-                ps.executeUpdate();
+    public CompletableFuture<Void> loadAll() {
+        return plugin.getDatabase().async(connection -> {
+            List<PetRow> rows = new ArrayList<>();
+            try (PreparedStatement statement = connection.prepareStatement("SELECT * FROM pets"); ResultSet result = statement.executeQuery()) {
+                while (result.next()) rows.add(PetRow.from(result));
             }
-            return null;
-        });
+            return rows;
+        }).thenCompose(rows -> onMain(() -> {
+            ownerPets.clear();
+            for (PetRow row : rows) {
+                try { getPets(row.owner()).add(row.toPet()); }
+                catch (IllegalArgumentException error) { plugin.getLogger().warning("Skipping invalid pet " + row.uuid() + ": " + error.getMessage()); }
+            }
+        }));
     }
 
-    public void loadAll() {
-        this.plugin.getDatabase().async(connection -> {
-            try (PreparedStatement ps = connection.prepareStatement("SELECT * FROM pets");
-                 ResultSet rs = ps.executeQuery();){
-                while (rs.next()) {
-                    UUID owner = UUID.fromString(rs.getString("owner"));
-                    Pet pet = new Pet(UUID.fromString(rs.getString("uuid")), owner, EntityType.valueOf((String)rs.getString("entity_type")), Pet.Rarity.valueOf(rs.getString("rarity")), Math.max(1, rs.getInt("size_int")));
-                    pet.setDisplayName(rs.getString("display_name"));
-                    pet.setLevel(rs.getInt("level"));
-                    pet.setExp(rs.getLong("exp"));
-                    pet.setDamageMultiplier(rs.getDouble("damage_multiplier"));
-                    pet.setCoinMultiplier(rs.getDouble("coin_multiplier"));
-                    pet.setGemMultiplier(rs.getDouble("gem_multiplier"));
-                    pet.setSkin(rs.getString("skin"));
-                    pet.setEquipped(rs.getInt("equipped") == 1);
-                    this.getPets(owner).add(pet);
-                }
-            }
-            return null;
-        });
+    public boolean equip(UUID owner, UUID petId) {
+        requireMain();
+        Pet pet = getPet(owner, petId);
+        Plot plot = plugin.getPlotManager().getPlot(owner);
+        if (pet == null || plot == null || pet.isEquipped() || plugin.getTradeManager().isPetLocked(petId)) return false;
+        long equipped = getPets(owner).stream().filter(Pet::isEquipped).count();
+        int configured = Math.max(1, plugin.getConfigManager().config().getInt("pets.max-equipped", 3));
+        if (equipped >= Math.min(configured, plot.getPetLimit())) return false;
+        pet.setEquipped(true);
+        showVirtualPet(pet, plot, (int) equipped);
+        recalculateOwner(owner); save(pet); return true;
+    }
+
+    public boolean unequip(UUID owner, UUID petId) {
+        requireMain();
+        Pet pet = getPet(owner, petId);
+        if (pet == null || !pet.isEquipped() || plugin.getTradeManager().isPetLocked(petId)) return false;
+        virtualPets.remove(pet.getUuid()); pet.setEquipped(false); pet.setPlaced(false); pet.setEntityUuid(null); recalculateOwner(owner); save(pet); return true;
+    }
+
+    public boolean transfer(UUID from, UUID to, UUID petId) {
+        requireMain(); Pet pet=getPet(from,petId); if(pet==null||plugin.getTradeManager().isPetLocked(petId))return false;
+        if(pet.isEquipped())unequip(from,petId); getPets(from).remove(pet); pet.setOwner(to); getPets(to).add(pet); save(pet); recalculateOwner(from); recalculateOwner(to); return true;
+    }
+
+    public void restoreEquipped(UUID owner) {
+        requireMain();
+        Plot plot = plugin.getPlotManager().getPlot(owner);
+        if (plot == null) return;
+        int index = 0;
+        cleanupLegacyEntities(plot);
+        for (Pet pet : getPets(owner)) {
+            if (!pet.isEquipped()) continue;
+            showVirtualPet(pet, plot, index++);
+        }
+        recalculateOwner(owner);
+    }
+
+    private void cleanupLegacyEntities(Plot plot) {
+        double radius = Math.max(8, plot.getSize() / 2.0 + 4);
+        for (Entity entity : new ArrayList<>(plot.getCenter().getWorld().getNearbyEntities(
+                plot.getCenter(), radius, 32, radius, this::isPet))) entity.remove();
+    }
+
+    private void showVirtualPet(Pet pet, Plot plot, int index) {
+        Location anchor = plugin.getPlotManager().homeLocation(plot).add((index % 3) * 4 - 4, 0, 3 + (index / 3.0) * 4);
+        if (!plot.contains(anchor)) anchor = plot.getCenter().clone();
+        virtualPets.show(pet, anchor);
+        pet.setEntityUuid(null);
+        pet.setLocation(anchor.getWorld().getName(), anchor.getX(), anchor.getY(), anchor.getZ());
+        pet.setPlaced(true);
+        save(pet);
+    }
+
+    public void grantKillExperience(UUID owner, long experience) {
+        requireMain();
+        PlayerData data = plugin.getPlayerManager().get(owner);
+        int highest = data == null ? 0 : data.getHighestPetLevel();
+        for (Pet pet : getPets(owner)) {
+            if (!pet.isEquipped()) continue;
+            long adjusted=plugin.getEventManager().isActive(me.growapet.events.EventType.PET_FRENZY)&&experience<=Long.MAX_VALUE/2?experience*2:experience;
+            pet.addExp(adjusted); highest = Math.max(highest, pet.getLevel()); save(pet);
+            virtualPets.update(pet);
+        }
+        if (data != null && highest > data.getHighestPetLevel()) data.setHighestPetLevel(highest);
+        recalculateOwner(owner);
+    }
+
+    public void recalculateOwner(UUID owner) {
+        PlayerData data = plugin.getPlayerManager().get(owner); if (data == null) return;
+        List<Pet> equipped = getPets(owner).stream().filter(Pet::isEquipped).toList();
+        data.setPetPower(equipped.stream().mapToDouble(p -> p.getLevel() * p.getDamageMultiplier()).sum());
+    }
+
+    public double damageMultiplier(UUID owner) { return getPets(owner).stream().filter(Pet::isEquipped).mapToDouble(Pet::getDamageMultiplier).reduce(1.0, (a,b) -> a*b); }
+    public double coinMultiplier(UUID owner) { return getPets(owner).stream().filter(Pet::isEquipped).mapToDouble(Pet::getCoinMultiplier).reduce(1.0, (a,b) -> a*b); }
+    public double gemMultiplier(UUID owner) { return getPets(owner).stream().filter(Pet::isEquipped).mapToDouble(Pet::getGemMultiplier).reduce(1.0, (a,b) -> a*b); }
+
+    public CompletableFuture<Void> save(Pet pet) {
+        PetRow row = PetRow.capture(pet);
+        CompletableFuture<Void> future=plugin.getDatabase().async(connection -> { insert(connection,row); return null; });
+        future.exceptionally(error->{plugin.getLogger().severe("Failed to persist pet "+row.uuid()+": "+error.getMessage());return null;});
+        return future;
+    }
+
+    public void insert(java.sql.Connection connection, Pet pet) throws Exception { insert(connection, PetRow.capture(pet)); }
+    private static void insert(java.sql.Connection connection, PetRow row) throws Exception {String sql="INSERT INTO pets(uuid,owner,entity_type,display_name,rarity,size_int,level,exp,damage_multiplier,coin_multiplier,gem_multiplier,skin,equipped,entity_uuid,world,x,y,z) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(uuid) DO UPDATE SET owner=excluded.owner,entity_type=excluded.entity_type,display_name=excluded.display_name,rarity=excluded.rarity,size_int=excluded.size_int,level=excluded.level,exp=excluded.exp,damage_multiplier=excluded.damage_multiplier,coin_multiplier=excluded.coin_multiplier,gem_multiplier=excluded.gem_multiplier,skin=excluded.skin,equipped=excluded.equipped,entity_uuid=excluded.entity_uuid,world=excluded.world,x=excluded.x,y=excluded.y,z=excluded.z";try(PreparedStatement s=connection.prepareStatement(sql)){int i=1;s.setString(i++,row.uuid().toString());s.setString(i++,row.owner().toString());s.setString(i++,row.type());s.setString(i++,row.name());s.setString(i++,row.rarity());s.setInt(i++,row.size());s.setInt(i++,row.level());s.setLong(i++,row.exp());s.setDouble(i++,row.damage());s.setDouble(i++,row.coins());s.setDouble(i++,row.gems());s.setString(i++,row.skin());s.setInt(i++,row.equipped()?1:0);s.setString(i++,row.entityUuid());s.setString(i++,row.world());s.setDouble(i++,row.x());s.setDouble(i++,row.y());s.setDouble(i,row.z());s.executeUpdate();}}
+
+    public void start() { virtualPets.start(); }
+    public void stop() { requireMain(); virtualPets.stop(); }
+    private static boolean isSupported(EntityType type) { return type != null && type.isAlive() && type.isSpawnable() && type != EntityType.PLAYER && type != EntityType.ARMOR_STAND; }
+    private static void requireMain() { if (!Bukkit.isPrimaryThread()) throw new IllegalStateException("Pet operation off server thread"); }
+    private <T> CompletableFuture<T> onMain(java.util.concurrent.Callable<T> action) { CompletableFuture<T> f=new CompletableFuture<>(); Bukkit.getScheduler().runTask(plugin,()->{try{f.complete(action.call());}catch(Throwable t){f.completeExceptionally(t);}});return f; }
+    private CompletableFuture<Void> onMain(Runnable action) { return onMain(() -> { action.run(); return null; }); }
+
+    private record PetRow(UUID uuid,UUID owner,String type,String name,String rarity,int size,int level,long exp,double damage,double coins,double gems,String skin,boolean equipped,String entityUuid,String world,double x,double y,double z) {
+        static PetRow from(ResultSet r)throws Exception{return new PetRow(UUID.fromString(r.getString("uuid")),UUID.fromString(r.getString("owner")),r.getString("entity_type"),r.getString("display_name"),r.getString("rarity"),Math.max(1,r.getInt("size_int")),r.getInt("level"),r.getLong("exp"),r.getDouble("damage_multiplier"),r.getDouble("coin_multiplier"),r.getDouble("gem_multiplier"),r.getString("skin"),r.getInt("equipped")==1,r.getString("entity_uuid"),r.getString("world"),r.getDouble("x"),r.getDouble("y"),r.getDouble("z"));}
+        static PetRow capture(Pet p){return new PetRow(p.getUuid(),p.getOwner(),p.getEntityType().name(),p.getDisplayName(),p.getRarity().name(),p.getSize(),p.getLevel(),p.getExp(),p.getDamageMultiplier(),p.getCoinMultiplier(),p.getGemMultiplier(),p.getSkin(),p.isEquipped(),p.getEntityUuid()==null?null:p.getEntityUuid().toString(),p.getWorld(),p.getX(),p.getY(),p.getZ());}
+        Pet toPet(){Pet p=new Pet(uuid,owner,EntityType.valueOf(type),Pet.Rarity.valueOf(rarity),size);p.setDisplayName(name);p.setLevel(level);p.setExp(exp);p.setDamageMultiplier(damage);p.setCoinMultiplier(coins);p.setGemMultiplier(gems);p.setSkin(skin);p.setEquipped(equipped);if(entityUuid!=null&&!entityUuid.isBlank())p.setEntityUuid(UUID.fromString(entityUuid));p.setLocation(world,x,y,z);return p;}
     }
 }
-

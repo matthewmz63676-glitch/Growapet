@@ -35,7 +35,7 @@ TabCompleter {
     }
 
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        if (!sender.hasPermission("growapet.admin")) {
+        if (!sender.hasPermission("growapet.admin.mob")) {
             sender.sendMessage("\u00a7cYou do not have permission.");
             return true;
         }
@@ -83,4 +83,3 @@ TabCompleter {
         return suggestions;
     }
 }
-

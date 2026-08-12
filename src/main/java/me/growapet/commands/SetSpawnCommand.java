@@ -29,7 +29,7 @@ implements CommandExecutor {
             return true;
         }
         Player player = (Player)sender;
-        if (!sender.hasPermission("growapet.admin")) {
+        if (!sender.hasPermission("growapet.admin.spawn")) {
             sender.sendMessage("\u00a7cYou do not have permission.");
             return true;
         }
@@ -38,4 +38,3 @@ implements CommandExecutor {
         return true;
     }
 }
-

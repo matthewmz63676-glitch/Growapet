@@ -48,9 +48,11 @@ implements CommandExecutor {
             player.sendMessage("\u00a7cThat player doesn't have a plot.");
             return true;
         }
-        player.teleport(plot.getCenter());
-        player.sendMessage("\u00a7aTeleported to \u00a7e" + (target.getName() != null ? target.getName() : args[0]) + "\u00a7a's plot.");
+        String targetName = target.getName() != null ? target.getName() : args[0];
+        this.plugin.getPlotManager().teleportHome(player, plot).thenAccept(success -> {
+            if (success) me.growapet.utils.Messages.send(player, "<green>Teleported to <yellow><player></yellow>'s plot.</green>", me.growapet.utils.Messages.value("player", targetName));
+            else me.growapet.utils.Messages.send(player, "<red>Unable to teleport to that plot safely.</red>");
+        });
         return true;
     }
 }
-

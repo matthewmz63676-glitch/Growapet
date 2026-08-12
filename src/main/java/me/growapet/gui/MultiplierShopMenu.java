@@ -1,79 +1,59 @@
-/*
- * Decompiled with CFR 0.152.
- * 
- * Could not load the following classes:
- *  org.bukkit.Material
- *  org.bukkit.entity.Player
- *  org.bukkit.inventory.ItemStack
- */
 package me.growapet.gui;
 
-import java.text.NumberFormat;
-import java.util.Locale;
 import me.growapet.GrowAPet;
-import me.growapet.gui.ItemBuilder;
-import me.growapet.gui.Menu;
-import me.growapet.gui.ShopMenu;
 import me.growapet.models.PlayerData;
 import me.growapet.shop.ShopUpgrade;
+import me.growapet.utils.Messages;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 
-public class MultiplierShopMenu
-extends Menu {
-    private static final NumberFormat FORMAT = NumberFormat.getIntegerInstance(Locale.US);
+import java.text.NumberFormat;
+import java.util.List;
+import java.util.Locale;
+
+public final class MultiplierShopMenu extends Menu {
+    private static final NumberFormat NUMBER = NumberFormat.getIntegerInstance(Locale.US);
     private final GrowAPet plugin;
 
     public MultiplierShopMenu(GrowAPet plugin, Player viewer) {
-        super(viewer, "&8Shop &7- Multipliers", 27);
+        super(viewer, Messages.parse("<light_purple><bold>MULTIPLIER SHOP</bold></light_purple>"), 36);
         this.plugin = plugin;
     }
 
-    @Override
-    public void build() {
-        PlayerData data = this.plugin.getPlayerManager().get(this.viewer);
-        if (data == null) {
-            return;
-        }
+    @Override public void build() {
+        PlayerData data = plugin.getPlayerManager().get(viewer);
+        if (data == null) return;
+        ItemStack pane = new ItemBuilder(Material.GRAY_STAINED_GLASS_PANE).name(Messages.parse(" ")).build();
+        for (int slot = 0; slot < 36; slot++) setItem(slot, pane, null);
+        int[] slots = {10, 11, 12, 14, 15, 16};
         ShopUpgrade[] upgrades = ShopUpgrade.values();
-        int slot = 10;
-        for (ShopUpgrade upgrade : upgrades) {
-            ItemBuilder builder;
-            String currency;
-            int level;
-            if (slot % 9 == 8) {
-                slot += 2;
-            }
-            boolean maxed = (level = data.getShopLevel(upgrade.getId())) >= upgrade.getMaxLevel();
-            double currentValue = upgrade.valueAtLevel(level);
-            String string = currency = upgrade.getCurrency() == ShopUpgrade.Currency.COINS ? "coins" : "gems";
-            if (maxed) {
-                builder = new ItemBuilder(upgrade.getIcon()).name(upgrade.getDisplayName() + " &7(&aMAX&7)").lore("&7Level: &e" + level + "&7/&e" + upgrade.getMaxLevel(), "&7Current: &f" + this.format(upgrade, currentValue), "", "&aMaximum level reached!").glow(true);
-            } else {
-                long cost = upgrade.costForLevel(level);
-                double nextValue = upgrade.valueAtLevel(level + 1);
-                boolean afford = this.plugin.getShopManager().canAfford(data, upgrade);
-                builder = new ItemBuilder(upgrade.getIcon()).name(upgrade.getDisplayName()).lore("&7Level: &e" + level + "&7/&e" + upgrade.getMaxLevel(), "&7Current: &f" + this.format(upgrade, currentValue) + " &8-> &a" + this.format(upgrade, nextValue), "", "&7Cost: " + (afford ? "&e" : "&c") + FORMAT.format(cost) + " " + currency, afford ? "&aClick to purchase!" : "&cYou can't afford this yet.");
-            }
-            this.setItem(slot, builder.build(), e -> {
-                if (this.plugin.getShopManager().purchase(this.viewer, upgrade)) {
-                    this.refresh();
-                }
-            });
-            ++slot;
+        for (int index = 0; index < upgrades.length; index++) {
+            ShopUpgrade upgrade = upgrades[index];
+            int level = data.getShopLevel(upgrade.getId());
+            boolean maxed = level >= upgrade.getMaxLevel();
+            long cost = maxed ? 0 : upgrade.costForLevel(level);
+            boolean affordable = maxed || plugin.getShopManager().canAfford(data, upgrade);
+            String currency = upgrade.getCurrency() == ShopUpgrade.Currency.COINS ? "Coins" : "Gems";
+            ItemBuilder item = new ItemBuilder(upgrade.getIcon()).name(Messages.parse("<light_purple><bold><name></bold></light_purple>", Messages.value("name", plain(upgrade.getDisplayName()))))
+                    .loreComponents(List.of(
+                            Messages.parse("<gray>• Level → <white><level>/<max></white></gray>", Messages.value("level", level), Messages.value("max", upgrade.getMaxLevel())),
+                            Messages.parse("<gray>• Current → <white><value></white></gray>", Messages.value("value", format(upgrade, upgrade.valueAtLevel(level)))),
+                            Messages.parse(maxed ? "<gray>• Next → <green>Maximum reached</green></gray>" : "<gray>• Next → <green><value></green></gray>", Messages.value("value", format(upgrade, upgrade.valueAtLevel(Math.min(upgrade.getMaxLevel(), level + 1))))),
+                            Messages.parse(""),
+                            Messages.parse(maxed ? "<green>Upgrade complete</green>" : "<gray>• Cost → <yellow><cost> <currency></yellow></gray>", Messages.value("cost", NUMBER.format(cost)), Messages.value("currency", currency)),
+                            Messages.parse(maxed ? "<dark_gray>No further levels are available.</dark_gray>" : affordable ? "<green>Click → purchase</green>" : "<red>Insufficient balance</red>")));
+            setItem(slots[index], item.glow(maxed).build(), event -> { if (!maxed && plugin.getShopManager().purchase(viewer, upgrade)) refresh(); });
         }
-        ItemStack back = new ItemBuilder(Material.ARROW).name("&7\u00ab Back to Shop").build();
-        this.setItem(22, back, e -> new ShopMenu(this.plugin, this.viewer).open());
-        ItemStack balance = new ItemBuilder(Material.PLAYER_HEAD).name("&fYour Balance").lore("&7Coins: &e" + FORMAT.format(data.getCoins()), "&7Gems: &a" + FORMAT.format(data.getGems())).build();
-        this.setItem(4, balance, null);
+        setItem(4, new ItemBuilder(Material.PLAYER_HEAD).name(Messages.parse("<white><bold>YOUR BALANCE</bold></white>"))
+                .loreComponents(List.of(Messages.parse("<gray>• Coins → <yellow><coins></yellow></gray>", Messages.value("coins", NUMBER.format(data.getCoins()))), Messages.parse("<gray>• Gems → <aqua><gems></aqua></gray>", Messages.value("gems", NUMBER.format(data.getGems()))))).build(), null);
+        setItem(31, new ItemBuilder(Material.ARROW).name(Messages.parse("<red><bold>BACK</bold></red>"))
+                .loreComponents(List.of(Messages.parse("<gray>• Click → return to the gear shop</gray>"))).build(), event -> new ShopMenu(plugin, viewer).open());
     }
 
-    private String format(ShopUpgrade upgrade, double value) {
-        if (upgrade == ShopUpgrade.CRIT_CHANCE) {
-            return String.format(Locale.US, "%.0f%%", value * 100.0);
-        }
-        return String.format(Locale.US, "%.2fx", value);
+    private static String format(ShopUpgrade upgrade, double value) {
+        return upgrade == ShopUpgrade.CRIT_CHANCE ? String.format(Locale.US, "%.0f%%", value * 100) : String.format(Locale.US, "%.2fx", value);
     }
+
+    private static String plain(String legacy) { return legacy.replaceAll("&[0-9A-FK-ORa-fk-or]", ""); }
 }
-

@@ -1,83 +1,14 @@
-/*
- * Decompiled with CFR 0.152.
- * 
- * Could not load the following classes:
- *  org.bukkit.Location
- *  org.bukkit.entity.Entity
- *  org.bukkit.entity.Player
- *  org.bukkit.event.Cancellable
- *  org.bukkit.event.EventHandler
- *  org.bukkit.event.Listener
- *  org.bukkit.event.block.BlockBreakEvent
- *  org.bukkit.event.block.BlockPlaceEvent
- *  org.bukkit.event.hanging.HangingBreakByEntityEvent
- *  org.bukkit.event.player.PlayerBucketEmptyEvent
- *  org.bukkit.event.player.PlayerBucketFillEvent
- */
 package me.growapet.listeners;
-
-import me.growapet.GrowAPet;
-import org.bukkit.Location;
-import org.bukkit.entity.Entity;
-import org.bukkit.entity.Player;
-import org.bukkit.event.Cancellable;
-import org.bukkit.event.EventHandler;
-import org.bukkit.event.Listener;
-import org.bukkit.event.block.BlockBreakEvent;
-import org.bukkit.event.block.BlockPlaceEvent;
-import org.bukkit.event.hanging.HangingBreakByEntityEvent;
-import org.bukkit.event.player.PlayerBucketEmptyEvent;
-import org.bukkit.event.player.PlayerBucketFillEvent;
-
-public class PlotProtectionListener
-implements Listener {
-    private final GrowAPet plugin;
-
-    public PlotProtectionListener(GrowAPet plugin) {
-        this.plugin = plugin;
-    }
-
-    @EventHandler(ignoreCancelled=true)
-    public void onBreak(BlockBreakEvent event) {
-        this.guard(event.getPlayer(), event.getBlock().getLocation(), (Cancellable)event);
-    }
-
-    @EventHandler(ignoreCancelled=true)
-    public void onPlace(BlockPlaceEvent event) {
-        this.guard(event.getPlayer(), event.getBlock().getLocation(), (Cancellable)event);
-    }
-
-    @EventHandler(ignoreCancelled=true)
-    public void onBucketEmpty(PlayerBucketEmptyEvent event) {
-        this.guard(event.getPlayer(), event.getBlock().getLocation(), (Cancellable)event);
-    }
-
-    @EventHandler(ignoreCancelled=true)
-    public void onBucketFill(PlayerBucketFillEvent event) {
-        this.guard(event.getPlayer(), event.getBlock().getLocation(), (Cancellable)event);
-    }
-
-    @EventHandler(ignoreCancelled=true)
-    public void onHangingBreak(HangingBreakByEntityEvent event) {
-        Entity entity = event.getRemover();
-        if (entity instanceof Player) {
-            Player player = (Player)entity;
-            this.guard(player, event.getEntity().getLocation(), (Cancellable)event);
-        }
-    }
-
-    private void guard(Player player, Location location, Cancellable event) {
-        if (player.hasPermission("growapet.admin")) {
-            return;
-        }
-        if (!this.plugin.getPlotManager().isWithinAnyPlot(location)) {
-            return;
-        }
-        if (this.plugin.getPlotManager().isWithinOwnPlot(player.getUniqueId(), location)) {
-            return;
-        }
-        event.setCancelled(true);
-        player.sendMessage("\u00a7cYou can't modify another player's plot!");
-    }
+import me.growapet.GrowAPet;import me.growapet.models.Plot;import org.bukkit.Location;import org.bukkit.block.*;import org.bukkit.entity.*;import org.bukkit.event.*;import org.bukkit.event.block.*;import org.bukkit.event.entity.*;import org.bukkit.event.hanging.*;import org.bukkit.event.inventory.InventoryMoveItemEvent;import org.bukkit.event.player.*;import org.bukkit.event.vehicle.VehicleDamageEvent;import org.bukkit.projectiles.ProjectileSource;import java.util.*;
+public final class PlotProtectionListener implements Listener{
+ private final GrowAPet plugin;public PlotProtectionListener(GrowAPet plugin){this.plugin=plugin;}
+ @EventHandler(ignoreCancelled=true)public void onBreak(BlockBreakEvent e){guard(e.getPlayer(),e.getBlock().getLocation(),e);}@EventHandler(ignoreCancelled=true)public void onPlace(BlockPlaceEvent e){guard(e.getPlayer(),e.getBlock().getLocation(),e);}@EventHandler(ignoreCancelled=true)public void onEmpty(PlayerBucketEmptyEvent e){guard(e.getPlayer(),e.getBlock().getRelative(e.getBlockFace()).getLocation(),e);}@EventHandler(ignoreCancelled=true)public void onFill(PlayerBucketFillEvent e){guard(e.getPlayer(),e.getBlock().getLocation(),e);}
+ @EventHandler(ignoreCancelled=true)public void onInteract(PlayerInteractEvent e){if(e.getClickedBlock()!=null&&isOther(e.getPlayer(),e.getClickedBlock().getLocation()))deny(e.getPlayer(),e);}@EventHandler(ignoreCancelled=true)public void onArmor(PlayerArmorStandManipulateEvent e){guard(e.getPlayer(),e.getRightClicked().getLocation(),e);}@EventHandler(ignoreCancelled=true)public void onEntity(PlayerInteractEntityEvent e){guard(e.getPlayer(),e.getRightClicked().getLocation(),e);}
+ @EventHandler(ignoreCancelled=true)public void onHangingBreak(HangingBreakByEntityEvent e){Player player=attacker(e.getRemover());if(player!=null)guard(player,e.getEntity().getLocation(),e);else if(plugin.getPlotManager().isWithinAnyPlot(e.getEntity().getLocation()))e.setCancelled(true);}@EventHandler(ignoreCancelled=true)public void onHangingPlace(HangingPlaceEvent e){if(e.getPlayer()!=null)guard(e.getPlayer(),e.getEntity().getLocation(),e);}
+ @EventHandler(ignoreCancelled=true)public void onEntityDamage(EntityDamageByEntityEvent e){Player player=attacker(e.getDamager());if(player!=null&&plugin.getPlotManager().isWithinAnyPlot(e.getEntity().getLocation()))guard(player,e.getEntity().getLocation(),e);}@EventHandler(ignoreCancelled=true)public void onVehicle(VehicleDamageEvent e){Player player=attacker(e.getAttacker());if(player!=null)guard(player,e.getVehicle().getLocation(),e);}
+ @EventHandler(ignoreCancelled=true)public void onPistonExtend(BlockPistonExtendEvent e){for(Block block:e.getBlocks())if(crosses(block.getLocation(),block.getRelative(e.getDirection()).getLocation())){e.setCancelled(true);return;}}@EventHandler(ignoreCancelled=true)public void onPistonRetract(BlockPistonRetractEvent e){for(Block block:e.getBlocks())if(crosses(block.getLocation(),block.getRelative(e.getDirection()).getLocation())){e.setCancelled(true);return;}}
+ @EventHandler(ignoreCancelled=true)public void onFlow(BlockFromToEvent e){if(crosses(e.getBlock().getLocation(),e.getToBlock().getLocation()))e.setCancelled(true);}@EventHandler(ignoreCancelled=true)public void onInventoryMove(InventoryMoveItemEvent e){if(e.getSource().getHolder() instanceof BlockState from&&e.getDestination().getHolder() instanceof BlockState to&&crosses(from.getLocation(),to.getLocation()))e.setCancelled(true);}
+ @EventHandler(ignoreCancelled=true)public void onExplode(EntityExplodeEvent e){e.blockList().removeIf(block->plugin.getPlotManager().isWithinAnyPlot(block.getLocation()));}@EventHandler(ignoreCancelled=true)public void onBlockExplode(BlockExplodeEvent e){e.blockList().removeIf(block->plugin.getPlotManager().isWithinAnyPlot(block.getLocation()));}@EventHandler(ignoreCancelled=true)public void onBurn(BlockBurnEvent e){if(plugin.getPlotManager().isWithinAnyPlot(e.getBlock().getLocation()))e.setCancelled(true);}@EventHandler(ignoreCancelled=true)public void onSpread(BlockSpreadEvent e){if(crosses(e.getSource().getLocation(),e.getBlock().getLocation()))e.setCancelled(true);}
+ private Player attacker(Entity entity){if(entity instanceof Player player)return player;if(entity instanceof Projectile projectile){ProjectileSource source=projectile.getShooter();if(source instanceof Player player)return player;}return null;}
+ private boolean crosses(Location a,Location b){Plot first=plugin.getPlotManager().plotAt(a),second=plugin.getPlotManager().plotAt(b);return!Objects.equals(first==null?null:first.getOwner(),second==null?null:second.getOwner())&&(first!=null||second!=null);}private boolean isOther(Player player,Location location){Plot plot=plugin.getPlotManager().plotAt(location);return plot!=null&&!plot.getOwner().equals(player.getUniqueId());}private void guard(Player player,Location location,Cancellable event){if(player.hasPermission("growapet.admin.bypass"))return;if(isOther(player,location))deny(player,event);}private void deny(Player player,Cancellable event){event.setCancelled(true);player.sendMessage("§cYou cannot interact with another player's plot.");}
 }
-

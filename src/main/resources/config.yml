@@ -8,6 +8,17 @@ plot:
   default-pet-limit: 5
   default-egg-limit: 3
   world: growapet_plots
+  spacing: 96
+  grid-width: 50
+
+pets:
+  max-equipped: 3
+
+events:
+  coin-rain-coins: 25
+  meteor-gems: 1
+  treasure-goblin-mob: ZOMBIE
+  max-tracked-mobs: 5000
 
 economy:
   starting-coins: 100
@@ -19,3 +30,29 @@ leveling:
   sync-minecraft-xp-bar: true
 
 autosave-interval-seconds: 300
+
+combat:
+  # Items without the growapet:damage PDC key use this amount.
+  default-damage: 1.0
+  # Defensive ceiling for malformed or externally-created weapon metadata.
+  max-hit-damage: 1000000.0
+
+virtual-displays:
+  view-distance: 64.0
+
+relics:
+  per-zone: 5
+  include-spawn: false
+
+chat-games:
+  interval-seconds: 900
+
+credit-milestones:
+  mob-kills: { "100": 2, "500": 5, "1000": 10 }
+  boss-kills: { "5": 3, "25": 10, "100": 25 }
+  eggs-hatched: { "25": 3, "100": 10, "500": 25 }
+  quests-completed: { "10": 3, "50": 10, "200": 30 }
+
+trade:
+  request-cooldown-seconds: 10
+  request-expiry-seconds: 30

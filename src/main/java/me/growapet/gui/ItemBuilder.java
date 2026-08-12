@@ -14,6 +14,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 import me.growapet.utils.Utils;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.TextDecoration;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Material;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.inventory.ItemFlag;
@@ -35,7 +38,12 @@ public class ItemBuilder {
     }
 
     public ItemBuilder name(String name) {
-        this.meta.setDisplayName(Utils.colorize(name));
+        this.meta.displayName(nonItalic(LegacyComponentSerializer.legacySection().deserialize(Utils.colorize(name))));
+        return this;
+    }
+
+    public ItemBuilder name(Component name) {
+        this.meta.displayName(nonItalic(name));
         return this;
     }
 
@@ -44,13 +52,22 @@ public class ItemBuilder {
         for (String line : lines) {
             lore.add(Utils.colorize(line));
         }
-        this.meta.setLore(lore);
+        this.meta.lore(lore.stream().map(line -> nonItalic(LegacyComponentSerializer.legacySection().deserialize(line))).toList());
         return this;
     }
 
     public ItemBuilder lore(List<String> lines) {
-        this.meta.setLore(lines.stream().map(Utils::colorize).collect(Collectors.toList()));
+        this.meta.lore(lines.stream().map(line -> nonItalic(LegacyComponentSerializer.legacySection().deserialize(Utils.colorize(line)))).toList());
         return this;
+    }
+
+    public ItemBuilder loreComponents(List<Component> lines) {
+        this.meta.lore(lines.stream().map(ItemBuilder::nonItalic).toList());
+        return this;
+    }
+
+    private static Component nonItalic(Component component) {
+        return component.decoration(TextDecoration.ITALIC, TextDecoration.State.FALSE);
     }
 
     public ItemBuilder glow(boolean glow) {
@@ -66,4 +83,3 @@ public class ItemBuilder {
         return this.item;
     }
 }
-

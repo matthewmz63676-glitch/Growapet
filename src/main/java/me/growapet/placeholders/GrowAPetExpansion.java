@@ -56,12 +56,15 @@ extends PlaceholderExpansion {
             case "coins" -> String.valueOf(data.getCoins());
             case "gems" -> String.valueOf(data.getGems());
             case "credits" -> String.valueOf(data.getCredits());
-            case "damage" -> String.format("%.2f", data.getDamageMultiplier());
-            case "coinmulti" -> String.format("%.2f", data.getCoinMultiplier());
-            case "gemsmulti" -> String.format("%.2f", data.getGemMultiplier());
-            case "expmulti" -> String.format("%.2f", data.getExpMultiplier());
+            case "damage", "damage_multiplier" -> String.format(java.util.Locale.US, "%.2f", data.getDamageMultiplier());
+            case "coinmulti", "coin_multiplier" -> String.format(java.util.Locale.US, "%.2f", data.getCoinMultiplier());
+            case "gemsmulti", "gem_multiplier" -> String.format(java.util.Locale.US, "%.2f", data.getGemMultiplier());
+            case "expmulti", "exp_multiplier" -> String.format(java.util.Locale.US, "%.2f", data.getExpMultiplier());
+            case "power", "pet_power" -> String.format(java.util.Locale.US, "%.2f", data.getPetPower());
+            case "mob_kills" -> String.valueOf(data.getMobKills());
+            case "boss_kills" -> String.valueOf(data.getBossKills());
+            case "playtime" -> String.valueOf(data.getPlaytimeSeconds());
             default -> null;
         };
     }
 }
-

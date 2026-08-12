@@ -1,53 +1,9 @@
-/*
- * Decompiled with CFR 0.152.
- * 
- * Could not load the following classes:
- *  org.bukkit.Material
- *  org.bukkit.entity.Player
- */
 package me.growapet.gui;
 
-import java.util.List;
-import me.growapet.GrowAPet;
-import me.growapet.gui.ItemBuilder;
-import me.growapet.gui.Menu;
-import me.growapet.zones.Zone;
-import org.bukkit.Material;
-import org.bukkit.entity.Player;
-
-public class WarpMenu
-extends Menu {
-    private final GrowAPet plugin;
-
-    public WarpMenu(GrowAPet plugin, Player viewer) {
-        super(viewer, "&8Warps", 27);
-        this.plugin = plugin;
-    }
-
-    @Override
-    public void build() {
-        List<Zone> zones = this.plugin.getZoneManager().getZonesInOrder();
-        int slot = 0;
-        for (Zone zone : zones) {
-            if (slot >= 27) break;
-            boolean unlocked = this.plugin.getZoneManager().isUnlocked(this.viewer, zone.getId());
-            if (unlocked) {
-                item = new ItemBuilder(Material.PAPER).name("&a" + zone.getDisplayName()).lore("&7Click to warp!").build();
-                this.setItem(slot, item, e -> {
-                    this.viewer.closeInventory();
-                    this.plugin.getZoneManager().teleport(this.viewer, zone.getId());
-                });
-            } else {
-                item = new ItemBuilder(Material.BARRIER).name("&c" + zone.getDisplayName() + " &7(Locked)").lore("&7Cost: &e" + zone.getCost() + " coins", "&7Click to purchase & warp.").build();
-                this.setItem(slot, item, e -> {
-                    if (this.plugin.getZoneManager().unlock(this.viewer, zone.getId())) {
-                        this.viewer.closeInventory();
-                        this.plugin.getZoneManager().teleport(this.viewer, zone.getId());
-                    }
-                });
-            }
-            ++slot;
-        }
-    }
+import me.growapet.GrowAPet;import me.growapet.models.PlayerData;import me.growapet.utils.Messages;import me.growapet.zones.Zone;import org.bukkit.Material;import org.bukkit.entity.Player;import org.bukkit.inventory.ItemStack;import java.text.NumberFormat;import java.util.*;
+public final class WarpMenu extends Menu{
+ private static final int[]SLOTS={10,11,12,13,14,15,16,19,20,21,22,23,24,25,28,29,30,31,32,33,34};private static final NumberFormat NUMBER=NumberFormat.getIntegerInstance(Locale.US);private final GrowAPet plugin;
+ public WarpMenu(GrowAPet plugin,Player viewer){super(viewer,Messages.parse("<aqua><bold>ZONE NAVIGATOR</bold></aqua>"),45);this.plugin=plugin;}
+ @Override public void build(){fill();PlayerData data=plugin.getPlayerManager().get(viewer);List<Zone>zones=plugin.getZoneManager().getZonesInOrder();setItem(4,item(Material.COMPASS,"<aqua><bold>WORLD PROGRESSION</bold></aqua>",List.of("<gray>• Unlocked → <white>"+(data==null?0:data.getUnlockedZones().size())+" / "+zones.size()+"</white></gray>","<gray>• Select an unlocked zone to travel</gray>")),null);for(int i=0;i<zones.size()&&i<SLOTS.length;i++){Zone zone=zones.get(i);boolean unlocked=plugin.getZoneManager().isUnlocked(viewer,zone.getId());List<String>lore=new ArrayList<>();lore.add("<gray>• Progression → <white>#"+(zone.getOrder()+1)+"</white></gray>");lore.add("<gray>• Level → <white>"+zone.getReqLevel()+"</white></gray>");if(!unlocked){lore.add("<gray>• Coins → <yellow>"+NUMBER.format(zone.getCost())+"</yellow></gray>");lore.add("<gray>• Gems → <aqua>"+NUMBER.format(zone.getGemCost())+"</aqua></gray>");}lore.add("");lore.add(unlocked?"<green>Click → warp to this zone</green>":"<yellow>Click → purchase this zone</yellow>");setItem(SLOTS[i],item(unlocked?Material.ENDER_PEARL:Material.IRON_BARS,(unlocked?"<green>":"<red>")+"<bold>"+safe(zone.getDisplayName())+"</bold>"+(unlocked?"</green>":"</red>"),lore),event->{if(unlocked){viewer.closeInventory();plugin.getZoneManager().teleport(viewer,zone.getId());}else if(plugin.getZoneManager().unlock(viewer,zone.getId()))refresh();});}setItem(40,item(Material.BARRIER,"<red><bold>CLOSE</bold></red>",List.of("<gray>• Click → close this menu</gray>")),event->viewer.closeInventory());}
+ private void fill(){ItemStack pane=item(Material.GRAY_STAINED_GLASS_PANE," ",List.of());for(int i=0;i<45;i++)setItem(i,pane,null);}private static ItemStack item(Material material,String name,List<String>lore){return new ItemBuilder(material).name(Messages.parse(name)).loreComponents(lore.stream().map(Messages::parse).toList()).build();}private static String safe(String value){return value.replace("<","‹").replace(">","›");}
 }
-
