@@ -34,12 +34,16 @@ import me.growapet.zones.WallManager;
 import me.growapet.zones.ZoneManager;
 import org.bukkit.Bukkit;
 import org.bukkit.command.PluginCommand;
+import org.bukkit.command.CommandExecutor;
+import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Listener;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.logging.Level;
 
 public final class GrowAPet extends JavaPlugin {
     private ConfigManager configManager; private Database database; private PlayerManager playerManager;
@@ -60,7 +64,7 @@ public final class GrowAPet extends JavaPlugin {
     private volatile boolean ready;
 
     @Override public void onEnable() {
-        configManager=new ConfigManager(this);configManager.loadAll();database=new Database(this);
+        configManager=new ConfigManager(this);configManager.loadAll();registerCommands();database=new Database(this);
         database.initialize().whenComplete((ignored,error)->{if(!isEnabled()){database.closeAsync();return;}Bukkit.getScheduler().runTask(this,()->{
             if(error!=null){getLogger().severe("GrowAPet is disabling because its data store is unavailable.");Bukkit.getPluginManager().disablePlugin(this);return;}
             initializeManagers();
@@ -79,16 +83,21 @@ public final class GrowAPet extends JavaPlugin {
     }
 
     private void finishEnable(){
-        me.growapet.integration.LuckPermsHook.initialize();wallManager.loadAll();registerListeners();registerCommands();virtualTextDisplays.start();mobManager.start();petManager.start();bossManager.start();eventManager.start();actionBarManager.start();plotBoostManager.start();leaderboardManager.start();relicManager.start();chatGameManager.start();
+        me.growapet.integration.LuckPermsHook.initialize();wallManager.loadAll();registerListeners();virtualTextDisplays.start();mobManager.start();petManager.start();bossManager.start();eventManager.start();actionBarManager.start();plotBoostManager.start();leaderboardManager.start();relicManager.start();chatGameManager.start();
         if(Bukkit.getPluginManager().getPlugin("PlaceholderAPI")!=null){new GrowAPetExpansion(this).register();getLogger().info("Hooked into PlaceholderAPI.");}
         long autosave=Math.max(30,configManager.config().getLong("autosave-interval-seconds",300))*20L;
         Bukkit.getScheduler().runTaskTimer(this,()->playerManager.saveAll().exceptionally(error->{getLogger().severe("Autosave failed: "+rootMessage(error));return null;}),autosave,autosave);
         ready=true;for(Player player:Bukkit.getOnlinePlayers())playerManager.load(player);getLogger().info("GrowAPet is ready.");
     }
 
-    private void registerListeners(){for(Listener listener:List.of(new CommandLockdownListener(this),new PlayerListener(this),new ZoneVisibilityListener(this),new MobDamageListener(this),new EggListener(this),eggIncubationManager,new BossListener(this),new PlotProtectionListener(this),new SpawnEggListener(this),new ChatListener(this),new WallListener(this),new MenuListener(this),new PetListener(this),relicManager))getServer().getPluginManager().registerEvents(listener,this);}
-    private void registerCommands(){command("growapet",new GrowAPetCommand(this));command("plot",new PlotCommand(this));command("pets",new PetsCommand(this));command("stats",new StatsCommand(this));command("boss",new BossCommand(this));command("warp",new WarpCommand(this));command("zones",new ZonesCommand(this));command("visit",new VisitCommand(this));command("leaderboard",new LeaderboardCommand(this));command("getegg",new GetEggCommand(this));command("shop",new ShopCommand(this));command("spawn",new SpawnCommand(this));command("setspawn",new SetSpawnCommand(this));command("store",new StoreCommand(this));command("unlockzone",new UnlockZoneCommand(this));command("quests",new QuestsCommand(this));command("trade",new TradeCommand(this));command("options",new OptionsCommand(this));command("getmob",new GetMobCommand(this));command("getpet",new GetPetCommand(this));command("autokill",new AutoKillCommand(this));command("daily",new DailyCommand(this));GrowAPetTabCompleter completer=new GrowAPetTabCompleter(this);for(String name:List.of("growapet","plot","pets","stats","boss","warp","zones","visit","leaderboard","getegg","shop","spawn","setspawn","store","unlockzone","quests","trade","options","getmob","getpet","autokill","daily"))getCommand(name).setTabCompleter(completer);}
-    private void command(String name,org.bukkit.command.CommandExecutor executor){PluginCommand command=getCommand(name);if(command==null)throw new IllegalStateException("Missing command "+name+" in plugin.yml");command.setExecutor(executor);}
+    private void registerListeners(){for(Listener listener:List.of(new CommandLockdownListener(this),new PlayerListener(this),new ZoneVisibilityListener(this),new MobDamageListener(this),new EggListener(this),eggIncubationManager,new BossListener(this),new PlotProtectionListener(this),new SpawnEggListener(this),new ChatListener(this),new WallListener(this),new MenuListener(this),new PetListener(this),actionBarManager,relicManager))getServer().getPluginManager().registerEvents(listener,this);}
+    private void registerCommands(){command("growapet",new GrowAPetCommand(this));command("plot",new PlotCommand(this));command("pets",new PetsCommand(this));command("stats",new StatsCommand(this));command("boss",new BossCommand(this));command("warp",new WarpCommand(this));command("zones",new ZonesCommand(this));command("visit",new VisitCommand(this));command("leaderboard",new LeaderboardCommand(this));command("getegg",new GetEggCommand(this));command("shop",new ShopCommand(this));command("spawn",new SpawnCommand(this));command("setspawn",new SetSpawnCommand(this));command("store",new StoreCommand(this));command("unlockzone",new UnlockZoneCommand(this));command("quests",new QuestsCommand(this));command("trade",new TradeCommand(this));command("options",new OptionsCommand(this));command("getmob",new GetMobCommand(this));command("getpet",new GetPetCommand(this));command("autokill",new AutoKillCommand(this));command("daily",new DailyCommand(this));GrowAPetTabCompleter completer=new GrowAPetTabCompleter(this);for(String name:List.of("growapet","plot","pets","stats","boss","warp","zones","visit","leaderboard","getegg","shop","spawn","setspawn","store","unlockzone","quests","trade","options","getmob","getpet","autokill","daily")){PluginCommand registered=getCommand(name);if(registered!=null)registered.setTabCompleter(safeCompleter(name,completer));}}
+    private void command(String name,CommandExecutor executor){PluginCommand command=getCommand(name);if(command==null)throw new IllegalStateException("Missing command "+name+" in plugin.yml");command.setExecutor((sender,registered,label,args)->{
+        if(!ready){sender.sendMessage(net.kyori.adventure.text.Component.text("GrowAPet is still starting. Please try again shortly.",net.kyori.adventure.text.format.NamedTextColor.YELLOW));return true;}
+        if(sender instanceof Player player&&!playerManager.isLoaded(player.getUniqueId())){sender.sendMessage(net.kyori.adventure.text.Component.text("Your GrowAPet profile is still loading. Please try again shortly.",net.kyori.adventure.text.format.NamedTextColor.YELLOW));return true;}
+        try{return executor.onCommand(sender,registered,label,args);}catch(Exception error){String incident=UUID.randomUUID().toString().substring(0,8);getLogger().log(Level.SEVERE,"Command /"+label+" failed ["+incident+"]",error);sender.sendMessage(net.kyori.adventure.text.Component.text("That command could not be completed. Reference: "+incident,net.kyori.adventure.text.format.NamedTextColor.RED));return true;}
+    });}
+    private TabCompleter safeCompleter(String name,TabCompleter delegate){return(sender,command,alias,args)->{if(!ready)return List.of();try{return delegate.onTabComplete(sender,command,alias,args);}catch(Exception error){getLogger().log(Level.WARNING,"Tab completion failed for /"+name,error);return List.of();}};}
 
     public void onPlayerReady(Player player){if(!plotManager.hasPlot(player.getUniqueId())){plotManager.createPlot(player.getUniqueId());player.sendMessage("§aA plot has been created for you. Use §e/plot home§a.");}optionsManager.load(player.getUniqueId());questManager.load(player.getUniqueId());tradeManager.deliverPending(player.getUniqueId());petManager.restoreEquipped(player.getUniqueId());plotBoostManager.refreshDisplay(player.getUniqueId());creditMilestoneManager.evaluate(player.getUniqueId());wallManager.sendWalls(player);}
     public boolean reloadRuntime(){if(!configManager.reloadAll())return false;zoneManager.load();wallManager.loadAll();questManager.reload();return true;}

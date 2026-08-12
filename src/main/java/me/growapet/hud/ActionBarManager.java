@@ -6,18 +6,24 @@ import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.Listener;
+import org.bukkit.event.player.PlayerResourcePackStatusEvent;
 import org.bukkit.scheduler.BukkitTask;
 
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
-public final class ActionBarManager {
+public final class ActionBarManager implements Listener {
     public static final int PRIORITY_KILL_RECEIPT = 100;
 
     private final GrowAPet plugin;
     private final Map<UUID, Override> overrides = new HashMap<>();
+    private final Set<UUID> spritePackReady = ConcurrentHashMap.newKeySet();
     private BukkitTask task;
 
     public ActionBarManager(GrowAPet plugin) {
@@ -40,6 +46,24 @@ public final class ActionBarManager {
 
     public void clear(UUID playerId) {
         overrides.remove(playerId);
+        spritePackReady.remove(playerId);
+    }
+
+    @EventHandler
+    public void onResourcePackStatus(PlayerResourcePackStatusEvent event) {
+        if (event.getStatus() == PlayerResourcePackStatusEvent.Status.SUCCESSFULLY_LOADED) {
+            spritePackReady.add(event.getPlayer().getUniqueId());
+        } else if (event.getStatus() == PlayerResourcePackStatusEvent.Status.DECLINED
+                || event.getStatus() == PlayerResourcePackStatusEvent.Status.FAILED_DOWNLOAD
+                || event.getStatus() == PlayerResourcePackStatusEvent.Status.INVALID_URL
+                || event.getStatus() == PlayerResourcePackStatusEvent.Status.FAILED_RELOAD
+                || event.getStatus() == PlayerResourcePackStatusEvent.Status.DISCARDED) {
+            spritePackReady.remove(event.getPlayer().getUniqueId());
+        }
+    }
+
+    boolean spritesReady(Player player) {
+        return player != null && spritePackReady.contains(player.getUniqueId());
     }
 
     private void tick() {
@@ -72,6 +96,7 @@ public final class ActionBarManager {
             task = null;
         }
         overrides.clear();
+        spritePackReady.clear();
     }
 
     private static long saturatedAdd(long left, long right) {

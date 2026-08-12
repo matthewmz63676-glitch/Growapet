@@ -26,15 +26,16 @@ final class HudComponentBuilder {
         int end = 0;
         while (matcher.find()) {
             result = result.append(LEGACY.deserialize(resolved.substring(end, matcher.start())));
-            result = result.append(icon(plugin, matcher.group(1)));
+            result = result.append(icon(plugin, player, matcher.group(1)));
             end = matcher.end();
         }
         return result.append(LEGACY.deserialize(resolved.substring(end)));
     }
 
-    private static Component icon(GrowAPet plugin, String id) {
+    private static Component icon(GrowAPet plugin, Player player, String id) {
         boolean enabled = plugin.getConfigManager().hud().getBoolean("sprites.enabled", true);
-        if (!enabled) {
+        boolean packReady = plugin.getActionBarManager() != null && plugin.getActionBarManager().spritesReady(player);
+        if (!useSprites(enabled, packReady)) {
             String fallback = plugin.getConfigManager().hud().getString("icons." + id, "•");
             return Component.text(fallback == null ? "•" : fallback);
         }
@@ -45,5 +46,9 @@ final class HudComponentBuilder {
             plugin.getLogger().warning("Invalid HUD sprite key for '" + id + "': " + error.getMessage());
             return Component.text(plugin.getConfigManager().hud().getString("icons." + id, "•"));
         }
+    }
+
+    static boolean useSprites(boolean configured, boolean packReady) {
+        return configured && packReady;
     }
 }

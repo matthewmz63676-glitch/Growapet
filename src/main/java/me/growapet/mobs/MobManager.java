@@ -95,34 +95,57 @@ public final class MobManager {
     }
 
     public LivingEntity spawnMob(String mobId, Location location) {
-        return spawnMob(mobId, location, null);
+        return spawnMobDetailed(mobId, location, null, true).entity();
     }
 
-    private LivingEntity spawnMob(String mobId, Location location, UUID respawnId) {
-        if (mobId == null || location == null || location.getWorld() == null) return null;
+    /** Administrative placement intentionally bypasses zone membership, but still validates the configured mob. */
+    public SpawnResult spawnAdminMob(String mobId, Location location) {
+        return spawnMobDetailed(mobId, location, null, false);
+    }
+
+    private SpawnResult spawnMobDetailed(String mobId, Location location, UUID respawnId, boolean enforceConfiguredZone) {
+        if (mobId == null || location == null || location.getWorld() == null) return SpawnResult.failed(SpawnFailure.INVALID_LOCATION, "The target world is not loaded.");
         String normalizedId = mobId.toUpperCase(Locale.ROOT);
         ConfigurationSection config = getMobConfig(normalizedId);
-        if (config == null || !config.getBoolean("enabled", true)) return null;
-        String zoneId = config.getString("zone", "");
-        if (!zoneId.isBlank() && !plugin.getZoneManager().isLocationInZone(location, zoneId)) {
-            plugin.getLogger().warning("Refused to spawn mob " + normalizedId + " outside configured zone '" + zoneId + "'.");
-            return null;
+        if (config == null) return SpawnResult.failed(SpawnFailure.UNKNOWN_MOB, "No mobs.yml entry exists for " + normalizedId + ".");
+        if (!config.getBoolean("enabled", true)) return SpawnResult.failed(SpawnFailure.DISABLED, normalizedId + " is disabled in mobs.yml.");
+        String configuredZone = config.getString("zone", "");
+        if (enforceConfiguredZone && !configuredZone.isBlank() && !plugin.getZoneManager().isLocationInZone(location, configuredZone)) {
+            plugin.getLogger().warning("Refused to spawn mob " + normalizedId + " outside configured zone '" + configuredZone + "'.");
+            return SpawnResult.failed(SpawnFailure.WRONG_ZONE, "This mob is configured for zone '" + configuredZone + "'.");
         }
+        var actualZone = plugin.getZoneManager().getZoneAt(location);
+        String visibilityZone = actualZone == null ? (enforceConfiguredZone ? configuredZone : "") : actualZone.getId();
 
         EntityType type;
         try {
             type = EntityType.valueOf(config.getString("entity", normalizedId).toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException error) {
             plugin.getLogger().warning("Invalid entity type for mob " + normalizedId);
-            return null;
+            return SpawnResult.failed(SpawnFailure.INVALID_ENTITY_TYPE, "The configured Bukkit entity type is invalid.");
         }
-        if (!type.isAlive() || !type.isSpawnable()) return null;
-        if (!location.getChunk().isLoaded()) location.getChunk().load();
+        if (!type.isAlive() || !type.isSpawnable()) return SpawnResult.failed(SpawnFailure.INVALID_ENTITY_TYPE, type.name() + " cannot be spawned as a living mob.");
+        try {
+            if (!location.getChunk().isLoaded() && !location.getChunk().load()) {
+                return SpawnResult.failed(SpawnFailure.CHUNK_LOAD_FAILED, "The target chunk could not be loaded.");
+            }
+        } catch (RuntimeException error) {
+            plugin.getLogger().log(java.util.logging.Level.WARNING, "Failed to load a chunk for mob " + normalizedId, error);
+            return SpawnResult.failed(SpawnFailure.CHUNK_LOAD_FAILED, "The target chunk could not be loaded.");
+        }
 
-        Entity spawned = location.getWorld().spawnEntity(location, type);
+        Entity spawned;
+        try {
+            spawned = location.getWorld().spawnEntity(location, type);
+        } catch (RuntimeException error) {
+            plugin.getLogger().log(java.util.logging.Level.WARNING,
+                    "World rejected GrowAPet mob " + normalizedId + " at " + location.getWorld().getName()
+                            + " " + location.getBlockX() + "," + location.getBlockY() + "," + location.getBlockZ(), error);
+            return SpawnResult.failed(SpawnFailure.WORLD_REJECTED, "The world rejected that entity spawn; check its difficulty and spawn rules.");
+        }
         if (!(spawned instanceof LivingEntity entity)) {
             spawned.remove();
-            return null;
+            return SpawnResult.failed(SpawnFailure.INVALID_ENTITY_TYPE, "The spawned entity was not living.");
         }
 
         double maxHealth = positiveFinite(config.getDouble("health", 20.0), 20.0);
@@ -144,11 +167,11 @@ public final class MobManager {
         pdc.remove(rewardedKey);
         customMaxHealth.put(entity.getUniqueId(), maxHealth);
         customHealth.put(entity.getUniqueId(), maxHealth);
-        mobZones.put(entity.getUniqueId(), zoneId);
-        spawnHologram(entity, config.getString("display-name", normalizedId), zoneId);
-        reconcileEntityVisibility(entity, zoneId);
+        mobZones.put(entity.getUniqueId(), visibilityZone);
+        spawnHologram(entity, config.getString("display-name", normalizedId), visibilityZone);
+        reconcileEntityVisibility(entity, visibilityZone);
         playConfiguredSound(entity.getLocation(), config, "spawn-sound");
-        return entity;
+        return SpawnResult.success(entity);
     }
 
     public boolean isTracked(UUID entityId) {
@@ -271,7 +294,7 @@ public final class MobManager {
         World world = Bukkit.getWorld(row.world);
         if (world == null) { scheduledRespawns.remove(row.id); return; }
         Location location = new Location(world, row.x, row.y, row.z, row.yaw, row.pitch);
-        LivingEntity entity = spawnMob(row.mobId, location, row.id);
+        LivingEntity entity = spawnMobDetailed(row.mobId, location, row.id, false).entity();
         if (entity == null) {
             Bukkit.getScheduler().runTaskLater(plugin, () -> attemptRespawn(row), 600L);
             return;
@@ -465,5 +488,12 @@ public final class MobManager {
         org.bukkit.NamespacedKey soundKey = org.bukkit.NamespacedKey.fromString(configured.contains(":") ? configured : "minecraft:" + configured);
         Sound sound = soundKey == null ? null : org.bukkit.Registry.SOUNDS.get(soundKey);
         if (sound != null) location.getWorld().playSound(location, sound, 1.0f, 1.0f);
+    }
+
+    public enum SpawnFailure { NONE, INVALID_LOCATION, UNKNOWN_MOB, DISABLED, WRONG_ZONE, INVALID_ENTITY_TYPE, CHUNK_LOAD_FAILED, WORLD_REJECTED }
+    public record SpawnResult(LivingEntity entity, SpawnFailure failure, String detail) {
+        private static SpawnResult success(LivingEntity entity) { return new SpawnResult(entity, SpawnFailure.NONE, ""); }
+        private static SpawnResult failed(SpawnFailure failure, String detail) { return new SpawnResult(null, failure, detail); }
+        public boolean successful() { return entity != null; }
     }
 }

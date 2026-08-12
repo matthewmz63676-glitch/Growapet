@@ -92,6 +92,7 @@ permissions:
       growapet.admin.events: true
       growapet.admin.bypass: true
       growapet.admin.leaderboards: true
+      growapet.command-blacklist.bypass: true
   growapet.admin.reload: { default: op }
   growapet.admin.economy: { default: op }
   growapet.admin.give: { default: op }
@@ -102,6 +103,9 @@ permissions:
   growapet.admin.events: { default: op }
   growapet.admin.bypass: { default: op }
   growapet.admin.leaderboards: { default: op }
+  growapet.command-blacklist.bypass:
+    description: Bypass GrowAPet's player command blacklist
+    default: op
   growapet.chat.color:
     description: Use & colour codes and #RRGGBB hex codes in chat
     default: op

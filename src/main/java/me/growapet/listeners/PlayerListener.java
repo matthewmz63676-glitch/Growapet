@@ -31,6 +31,8 @@ implements Listener {
 
     @EventHandler
     public void onPlayerQuit(PlayerQuitEvent event) {
+        this.plugin.getActionBarManager().clear(event.getPlayer().getUniqueId());
+        this.plugin.getLeaderboardManager().dismissPersonal(event.getPlayer().getUniqueId());
         java.util.concurrent.CompletableFuture.allOf(
                 this.plugin.getTradeManager().cancel(event.getPlayer().getUniqueId(), "§cTrade cancelled: a player disconnected."),
                 this.plugin.getQuestManager().awaitPendingClaim(event.getPlayer().getUniqueId())
