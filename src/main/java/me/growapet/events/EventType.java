@@ -1,0 +1,5 @@
+package me.growapet.events;
+
+public enum EventType {
+    DOUBLE_COINS, DOUBLE_GEMS, DOUBLE_EXP, LUCKY_EGG, BOSS_RUSH, PET_FRENZY, COIN_RAIN, METEOR_SHOWER, TREASURE_GOBLIN
+}

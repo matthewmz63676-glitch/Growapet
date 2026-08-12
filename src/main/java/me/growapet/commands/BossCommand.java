@@ -30,7 +30,7 @@ implements CommandExecutor {
 
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (args.length >= 1 && args[0].equalsIgnoreCase("spawn")) {
-            if (!sender.hasPermission("growapet.admin")) {
+            if (!sender.hasPermission("growapet.admin.boss")) {
                 sender.sendMessage("\u00a7cYou do not have permission.");
                 return true;
             }
@@ -53,8 +53,8 @@ implements CommandExecutor {
         }
         sender.sendMessage("\u00a7c\u00a7lActive Bosses");
         for (ActiveBoss boss : active.values()) {
-            double hp = Math.max(0.0, boss.getEntity().getHealth());
-            double max = boss.getEntity().getAttribute(Attribute.MAX_HEALTH) != null ? boss.getEntity().getAttribute(Attribute.MAX_HEALTH).getValue() : hp;
+            double hp = boss.getHealth();
+            double max = boss.getMaxHealth();
             sender.sendMessage(" \u00a77- \u00a7e" + boss.getBossId() + " \u00a77HP: \u00a7c" + Math.round(hp) + "/" + Math.round(max));
             boss.getDamageByPlayer().entrySet().stream().sorted((a, b) -> Double.compare((Double)b.getValue(), (Double)a.getValue())).limit(3L).forEach(entry -> {
                 Player p = this.plugin.getServer().getPlayer((UUID)entry.getKey());
@@ -65,4 +65,3 @@ implements CommandExecutor {
         return true;
     }
 }
-

@@ -35,7 +35,7 @@ TabCompleter {
     }
 
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        if (!sender.hasPermission("growapet.admin")) {
+        if (!sender.hasPermission("growapet.admin.give")) {
             sender.sendMessage("\u00a7cYou do not have permission.");
             return true;
         }
@@ -53,7 +53,8 @@ TabCompleter {
             sender.sendMessage("\u00a7cUnknown or non-spawnable mob: " + args[1]);
             return true;
         }
-        target.getInventory().addItem(new ItemStack[]{egg});
+        java.util.Map<Integer,ItemStack> overflow=target.getInventory().addItem(egg);
+        overflow.values().forEach(left->target.getWorld().dropItemNaturally(target.getLocation(),left));
         sender.sendMessage("\u00a7aGave " + target.getName() + " a custom \u00a7e" + args[1] + " \u00a7aspawn egg.");
         return true;
     }
@@ -84,4 +85,3 @@ TabCompleter {
         return suggestions;
     }
 }
-

@@ -48,6 +48,7 @@ implements Listener {
         if (mobId == null) {
             return;
         }
+        if (!player.hasPermission("growapet.admin.mob")) { event.setCancelled(true); player.sendMessage("§cYou cannot use admin mob spawners."); return; }
         event.setCancelled(true);
         if (event.getClickedBlock() != null) {
             Block relative = event.getClickedBlock().getRelative(event.getBlockFace());
@@ -62,4 +63,3 @@ implements Listener {
         item.setAmount(item.getAmount() - 1);
     }
 }
-

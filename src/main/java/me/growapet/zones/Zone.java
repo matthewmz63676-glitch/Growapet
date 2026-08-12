@@ -20,8 +20,9 @@ public class Zone {
     private final int reqLevel;
     private final Location warp;
     private final WallRegion wall;
+    private final String regionId;
 
-    public Zone(String id, String displayName, int order, long cost, long gemCost, int reqLevel, Location warp, WallRegion wall) {
+    public Zone(String id, String displayName, int order, long cost, long gemCost, int reqLevel, Location warp, WallRegion wall, String regionId) {
         this.id = id;
         this.displayName = displayName;
         this.order = order;
@@ -30,6 +31,7 @@ public class Zone {
         this.reqLevel = reqLevel;
         this.warp = warp;
         this.wall = wall;
+        this.regionId = regionId;
     }
 
     public boolean hasWall() {
@@ -75,5 +77,8 @@ public class Zone {
     public WallRegion getWall() {
         return this.wall;
     }
-}
 
+    public String getRegionId() {
+        return this.regionId;
+    }
+}

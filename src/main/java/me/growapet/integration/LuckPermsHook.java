@@ -26,11 +26,10 @@ public final class LuckPermsHook {
     private LuckPermsHook() {
     }
 
+    public static void initialize() { available = Bukkit.getPluginManager().getPlugin("LuckPerms") != null; }
+
     public static boolean isAvailable() {
-        if (available == null) {
-            available = Bukkit.getPluginManager().getPlugin("LuckPerms") != null;
-        }
-        return available;
+        return Boolean.TRUE.equals(available);
     }
 
     public static String prefix(Player player) {
@@ -39,7 +38,7 @@ public final class LuckPermsHook {
         }
         try {
             LuckPerms luckPerms = LuckPermsProvider.get();
-            CachedMetaData meta = luckPerms.getPlayerAdapter(Player.class).getMetaData((Object)player);
+            CachedMetaData meta = luckPerms.getPlayerAdapter(Player.class).getMetaData(player);
             String prefix = meta.getPrefix();
             if (prefix == null) {
                 return "";
@@ -65,4 +64,3 @@ public final class LuckPermsHook {
         return result.toString();
     }
 }
-

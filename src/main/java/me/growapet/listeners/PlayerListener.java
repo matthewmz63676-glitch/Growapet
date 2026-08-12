@@ -26,16 +26,18 @@ implements Listener {
 
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent event) {
-        this.plugin.getPlayerManager().load(event.getPlayer());
-        if (!this.plugin.getPlotManager().hasPlot(event.getPlayer().getUniqueId())) {
-            Plot plot = this.plugin.getPlotManager().createPlot(event.getPlayer().getUniqueId());
-            event.getPlayer().sendMessage("\u00a7aA plot has been created for you! Use \u00a7e/plot home \u00a7ato visit it.");
-        }
+        if (this.plugin.isReady()) this.plugin.getPlayerManager().load(event.getPlayer());
     }
 
     @EventHandler
     public void onPlayerQuit(PlayerQuitEvent event) {
-        this.plugin.getPlayerManager().unload(event.getPlayer());
+        java.util.concurrent.CompletableFuture.allOf(
+                this.plugin.getTradeManager().cancel(event.getPlayer().getUniqueId(), "§cTrade cancelled: a player disconnected."),
+                this.plugin.getQuestManager().awaitPendingClaim(event.getPlayer().getUniqueId())
+        ).whenComplete((ignored,error) -> {
+            if (this.plugin.isEnabled()) org.bukkit.Bukkit.getScheduler().runTask(this.plugin,
+                    () -> this.plugin.getPlayerManager().unload(event.getPlayer()));
+        });
+        this.plugin.getOptionsManager().unload(event.getPlayer().getUniqueId());
     }
 }
-

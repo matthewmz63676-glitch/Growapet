@@ -1,5 +1,4 @@
-# Pet rarity/size weighting and base stats. Rolling logic currently lives in
-# PetManager (Java) — this file is reserved for future data-driven balancing.
+# Pet rarity weights and size labels used by the live hatch system.
 rarities:
   COMMON: { weight: 45, color: "&f" }
   UNCOMMON: { weight: 25, color: "&a" }

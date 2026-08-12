@@ -22,7 +22,6 @@ import me.growapet.GrowAPet;
 import me.growapet.zones.WallRegion;
 import me.growapet.zones.Zone;
 import org.bukkit.Bukkit;
-import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Sound;
@@ -62,10 +61,14 @@ public class WallManager {
     }
 
     public void sendWalls(Player player) {
+        ArrayList<Location> pending = new ArrayList<>();
         for (Zone zone : this.plugin.getZoneManager().getZonesInOrder()) {
             if (!zone.hasWall() || this.plugin.getZoneManager().isUnlocked(player, zone.getId())) continue;
-            this.sendFakeWall(player, zone.getId());
+            pending.addAll(this.blockCache.getOrDefault(zone.getId(), List.of()));
         }
+        BlockData glass = Material.BLACK_STAINED_GLASS.createBlockData();
+        int batchSize = 500;
+        for (int from=0;from<pending.size();from+=batchSize) { int start=from,end=Math.min(pending.size(),from+batchSize);Bukkit.getScheduler().runTaskLater(this.plugin,()->{if(!player.isOnline())return;for(int i=start;i<end;i++)player.sendBlockChange(pending.get(i),glass);},from/batchSize); }
     }
 
     private void sendFakeWall(Player player, String zoneId) {
@@ -104,37 +107,21 @@ public class WallManager {
             player.sendMessage("\u00a7d\u00a7lWALL BROKEN! \u00a7r\u00a77The path to \u00a7e" + zone.getDisplayName() + " \u00a77is now open!");
             return;
         }
-        GameMode previousMode = player.getGameMode();
-        Location previousLocation = player.getLocation();
-        boolean wasFlying = player.isFlying();
-        boolean couldFly = player.getAllowFlight();
-        player.setGameMode(GameMode.SPECTATOR);
-        player.teleport(wall.getCameraPose());
-        player.playSound(wall.getCameraPose(), Sound.BLOCK_BEACON_ACTIVATE, 1.0f, 1.0f);
-        player.playSound(wall.getCameraPose(), Sound.ENTITY_ELDER_GUARDIAN_CURSE, 1.0f, 1.0f);
-        List blocks = this.blockCache.getOrDefault(zone.getId(), List.of());
-        Bukkit.getScheduler().runTaskLater((Plugin)this.plugin, () -> player.playSound(wall.getCameraPose(), Sound.ENTITY_LIGHTNING_BOLT_THUNDER, 1.0f, 1.0f), 10L);
+        player.playSound(player.getLocation(), Sound.BLOCK_BEACON_ACTIVATE, 1.0f, 1.0f);
+        player.playSound(player.getLocation(), Sound.ENTITY_ELDER_GUARDIAN_CURSE, 1.0f, 1.0f);
+        List<Location> blocks = this.blockCache.getOrDefault(zone.getId(), List.of());
+        Bukkit.getScheduler().runTaskLater((Plugin)this.plugin, () -> {if(player.isOnline())player.playSound(player.getLocation(), Sound.ENTITY_LIGHTNING_BOLT_THUNDER, 1.0f, 1.0f);}, 10L);
         int waves = 8;
-        for (Location block : blocks) {
-            int wave = 1 + this.random.nextInt(waves);
-            long delay = 10L + (long)wave * 8L;
-            Bukkit.getScheduler().runTaskLater((Plugin)this.plugin, () -> {
-                player.sendBlockChange(block, Material.AIR.createBlockData());
-                player.playSound(block, Sound.BLOCK_GLASS_BREAK, 1.0f, 0.7f + (float)wave * 0.05f);
-            }, delay);
-        }
+        List<List<Location>> waveBlocks=new ArrayList<>();for(int i=0;i<waves;i++)waveBlocks.add(new ArrayList<>());for(Location block:blocks){waveBlocks.get(this.random.nextInt(waves)).add(block);}for(int wave=0;wave<waves;wave++){int index=wave;Bukkit.getScheduler().runTaskLater(this.plugin,()->{if(!player.isOnline())return;for(Location block:waveBlocks.get(index))player.sendBlockChange(block,Material.AIR.createBlockData());player.playSound(player.getLocation(),Sound.BLOCK_GLASS_BREAK,1,0.8f+index*.05f);},10L+(wave+1)*8L);}
         Bukkit.getScheduler().runTaskLater((Plugin)this.plugin, () -> {
+            if (!player.isOnline()) return;
             player.playSound(player.getLocation(), Sound.UI_TOAST_CHALLENGE_COMPLETE, 1.0f, 1.0f);
             player.playSound(player.getLocation(), Sound.BLOCK_BEACON_POWER_SELECT, 1.0f, 1.2f);
         }, 90L);
         Bukkit.getScheduler().runTaskLater((Plugin)this.plugin, () -> {
-            player.setGameMode(previousMode);
-            player.teleport(previousLocation);
-            player.setAllowFlight(couldFly);
-            player.setFlying(wasFlying && couldFly);
+            if (!player.isOnline()) return;
             this.clearFakeWall(player, zone.getId());
             player.sendMessage("\u00a7d\u00a7lWALL BROKEN! \u00a7r\u00a77The path to \u00a7e" + zone.getDisplayName() + " \u00a77is now open!");
         }, 105L);
     }
 }
-

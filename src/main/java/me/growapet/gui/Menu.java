@@ -1,20 +1,8 @@
-/*
- * Decompiled with CFR 0.152.
- * 
- * Could not load the following classes:
- *  org.bukkit.Bukkit
- *  org.bukkit.entity.Player
- *  org.bukkit.event.inventory.InventoryClickEvent
- *  org.bukkit.event.inventory.InventoryType
- *  org.bukkit.inventory.Inventory
- *  org.bukkit.inventory.InventoryHolder
- *  org.bukkit.inventory.ItemStack
- */
 package me.growapet.gui;
 
 import java.util.HashMap;
 import java.util.Map;
-import me.growapet.utils.Utils;
+import java.util.UUID;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryClickEvent;
@@ -22,26 +10,29 @@ import org.bukkit.event.inventory.InventoryType;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
+import net.kyori.adventure.text.Component;
 
 public abstract class Menu
 implements InventoryHolder {
     protected final Player viewer;
-    private final String title;
+    private final Component componentTitle;
     private final int size;
     private final InventoryType type;
     private Inventory inventory;
+    private final UUID sessionId = UUID.randomUUID();
+    private boolean active;
     private final Map<Integer, ClickHandler> handlers = new HashMap<Integer, ClickHandler>();
 
-    protected Menu(Player viewer, String title, int size) {
+    protected Menu(Player viewer, Component title, int size) {
         this.viewer = viewer;
-        this.title = Utils.colorize(title);
+        this.componentTitle = title;
         this.size = size;
         this.type = null;
     }
 
-    protected Menu(Player viewer, String title, InventoryType type) {
+    protected Menu(Player viewer, Component title, InventoryType type) {
         this.viewer = viewer;
-        this.title = Utils.colorize(title);
+        this.componentTitle = title;
         this.size = type.getDefaultSize();
         this.type = type;
     }
@@ -49,8 +40,11 @@ implements InventoryHolder {
     public abstract void build();
 
     public void open() {
-        this.inventory = this.type != null ? Bukkit.createInventory((InventoryHolder)this, (InventoryType)this.type, (String)this.title) : Bukkit.createInventory((InventoryHolder)this, (int)this.size, (String)this.title);
+        this.inventory = this.type != null
+                ? Bukkit.createInventory(this, this.type, this.componentTitle)
+                : Bukkit.createInventory(this, this.size, this.componentTitle);
         this.build();
+        this.active = true;
         this.viewer.openInventory(this.inventory);
     }
 
@@ -70,6 +64,7 @@ implements InventoryHolder {
     }
 
     void handleClick(InventoryClickEvent event) {
+        if (!this.active || event.getWhoClicked() != this.viewer || event.getView().getTopInventory() != this.inventory) return;
         ClickHandler handler = this.handlers.get(event.getRawSlot());
         if (handler != null) {
             handler.onClick(event);
@@ -80,9 +75,13 @@ implements InventoryHolder {
         return this.inventory;
     }
 
+    public UUID getSessionId() { return this.sessionId; }
+    public Player getViewer() { return this.viewer; }
+    public boolean isActive() { return this.active; }
+    void invalidate() { this.active = false; this.handlers.clear(); }
+
     @FunctionalInterface
     public static interface ClickHandler {
         public void onClick(InventoryClickEvent var1);
     }
 }
-

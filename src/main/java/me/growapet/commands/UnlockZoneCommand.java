@@ -19,6 +19,8 @@ import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
+import java.util.UUID;
+
 public class UnlockZoneCommand
 implements CommandExecutor {
     private final GrowAPet plugin;
@@ -28,7 +30,7 @@ implements CommandExecutor {
     }
 
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        if (!sender.hasPermission("growapet.admin")) {
+        if (!sender.hasPermission("growapet.admin.zones")) {
             sender.sendMessage("\u00a7cYou do not have permission.");
             return true;
         }
@@ -51,14 +53,17 @@ implements CommandExecutor {
             sender.sendMessage("\u00a7cThat player's data hasn't loaded yet.");
             return true;
         }
+        if (data.hasUnlockedZone(zone.getId())) { sender.sendMessage("§eThat zone is already unlocked."); return true; }
+        if (!data.tryLockEconomy()) { sender.sendMessage("§cThat player has another transaction in progress."); return true; }
         data.unlockZone(zone.getId());
-        sender.sendMessage("\u00a7aUnlocked " + zone.getDisplayName() + " for " + target.getName() + ".");
-        if (zone.hasWall()) {
-            this.plugin.getWallManager().playBreakCutscene(target, zone);
-        } else {
-            target.sendMessage("\u00a7aAn admin unlocked \u00a7e" + zone.getDisplayName() + " \u00a7afor you!");
-        }
+        this.plugin.getPlayerManager().saveTransaction(data, UUID.randomUUID().toString(), "ADMIN:ZONE:" + zone.getId(), 0, 0, 0)
+                .whenComplete((ignored,error)->Bukkit.getScheduler().runTask(plugin,()->{
+                    data.unlockEconomy();
+                    if(error!=null){data.revokeZone(zone.getId());sender.sendMessage("§cZone unlock failed safely.");return;}
+                    sender.sendMessage("§aUnlocked " + zone.getDisplayName() + " for " + target.getName() + ".");
+                    if (zone.hasWall()) plugin.getWallManager().playBreakCutscene(target, zone);
+                    else target.sendMessage("§aAn admin unlocked §e" + zone.getDisplayName() + " §afor you!");
+                }));
         return true;
     }
 }
-

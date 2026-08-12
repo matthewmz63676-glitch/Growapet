@@ -1,54 +1,52 @@
-/*
- * Decompiled with CFR 0.152.
- * 
- * Could not load the following classes:
- *  lombok.Generated
- *  org.bukkit.configuration.ConfigurationSection
- *  org.bukkit.entity.LivingEntity
- */
 package me.growapet.bosses;
+
+import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.entity.LivingEntity;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
-import lombok.Generated;
-import org.bukkit.configuration.ConfigurationSection;
-import org.bukkit.entity.LivingEntity;
 
-public class ActiveBoss {
+public final class ActiveBoss {
     private final String bossId;
     private final LivingEntity entity;
     private final ConfigurationSection config;
-    private final Map<UUID, Double> damageByPlayer = new LinkedHashMap<UUID, Double>();
+    private final Map<UUID, Double> damageByPlayer = new LinkedHashMap<>();
+    private final UUID runId;
+    private final double maxHealth;
+    private double health;
 
     public ActiveBoss(String bossId, LivingEntity entity, ConfigurationSection config) {
+        this(bossId, entity, config, UUID.randomUUID(), Math.max(1, config.getDouble("health", 1000)), Map.of());
+    }
+
+    public ActiveBoss(String bossId, LivingEntity entity, ConfigurationSection config, UUID runId,
+                      double health, Map<UUID, Double> damage) {
         this.bossId = bossId;
         this.entity = entity;
         this.config = config;
+        this.runId = runId == null ? UUID.randomUUID() : runId;
+        this.maxHealth = Math.max(1, config.getDouble("health", 1000));
+        this.health = Math.max(1, Math.min(this.maxHealth, health));
+        damage.forEach((player, amount) -> {
+            if (player != null && amount != null && Double.isFinite(amount) && amount > 0) damageByPlayer.put(player, amount);
+        });
     }
 
     public void addDamage(UUID player, double amount) {
-        this.damageByPlayer.merge(player, amount, Double::sum);
+        if (player != null && Double.isFinite(amount) && amount > 0) damageByPlayer.merge(player, amount, Double::sum);
     }
 
-    @Generated
-    public String getBossId() {
-        return this.bossId;
+    public boolean damage(double amount) {
+        if (Double.isFinite(amount) && amount > 0) health = Math.max(0, health - amount);
+        return health <= 0;
     }
 
-    @Generated
-    public LivingEntity getEntity() {
-        return this.entity;
-    }
-
-    @Generated
-    public ConfigurationSection getConfig() {
-        return this.config;
-    }
-
-    @Generated
-    public Map<UUID, Double> getDamageByPlayer() {
-        return this.damageByPlayer;
-    }
+    public String getBossId() { return bossId; }
+    public LivingEntity getEntity() { return entity; }
+    public ConfigurationSection getConfig() { return config; }
+    public Map<UUID, Double> getDamageByPlayer() { return damageByPlayer; }
+    public UUID getRunId() { return runId; }
+    public double getMaxHealth() { return maxHealth; }
+    public double getHealth() { return health; }
 }
-

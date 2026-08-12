@@ -1,6 +1,8 @@
 # Zone definitions, including warp coordinates used by ZoneManager/WarpMenu.
 # Coordinates are placeholders (world "world", spaced 100 blocks apart along X) —
 # the server owner should edit these to match the actual built zones.
+# Every zone also requires the named WorldGuard cuboid region. Missing or
+# non-cuboid regions disable zone-bound spawning, displays, and culling.
 #
 # Optional per-zone extras (all default to "not required"/"no wall"):
 #   req-level: 20        # minimum player level required, on top of coin/gem cost
@@ -20,6 +22,7 @@
 #     cam-pitch: 0
 zones:
   spawn:
+    region: "growapet_spawn"
     display-name: "Spawn"
     order: 0
     cost: 0
@@ -28,6 +31,7 @@ zones:
     y: 100
     z: 0
   forest:
+    region: "growapet_forest"
     display-name: "Forest"
     order: 1
     cost: 500
@@ -36,6 +40,7 @@ zones:
     y: 100
     z: 0
   plains:
+    region: "growapet_plains"
     display-name: "Plains"
     order: 2
     cost: 1500
@@ -44,6 +49,7 @@ zones:
     y: 100
     z: 0
   mushroom:
+    region: "growapet_mushroom"
     display-name: "Mushroom Fields"
     order: 3
     cost: 3000
@@ -52,6 +58,7 @@ zones:
     y: 100
     z: 0
   desert:
+    region: "growapet_desert"
     display-name: "Desert"
     order: 4
     cost: 6000
@@ -60,6 +67,7 @@ zones:
     y: 100
     z: 0
   badlands:
+    region: "growapet_badlands"
     display-name: "Badlands"
     order: 5
     cost: 12000
@@ -68,6 +76,7 @@ zones:
     y: 100
     z: 0
   snow:
+    region: "growapet_snow"
     display-name: "Snowlands"
     order: 6
     cost: 25000
@@ -76,6 +85,7 @@ zones:
     y: 100
     z: 0
   deep_caves:
+    region: "growapet_deep_caves"
     display-name: "Deep Caves"
     order: 7
     cost: 50000
@@ -84,6 +94,7 @@ zones:
     y: 100
     z: 0
   nether:
+    region: "growapet_nether"
     display-name: "Nether"
     order: 8
     cost: 100000
@@ -92,6 +103,7 @@ zones:
     y: 100
     z: 0
   end:
+    region: "growapet_end"
     display-name: "The End"
     order: 9
     cost: 250000
@@ -100,6 +112,7 @@ zones:
     y: 100
     z: 0
   ancient_realm:
+    region: "growapet_ancient_realm"
     display-name: "Ancient Realm"
     order: 10
     cost: 1000000

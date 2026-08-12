@@ -11,9 +11,9 @@
  */
 package me.growapet.mobs;
 
-import java.util.List;
 import me.growapet.GrowAPet;
-import me.growapet.utils.Utils;
+import me.growapet.gui.ItemBuilder;
+import me.growapet.utils.Messages;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.inventory.ItemStack;
@@ -32,18 +32,24 @@ public class SpawnEggManager {
 
     public ItemStack createSpawnEgg(String mobId) {
         Material eggMaterial;
+        org.bukkit.configuration.ConfigurationSection config = this.plugin.getMobManager().getMobConfig(mobId.toUpperCase());
+        if (config == null || !config.getBoolean("enabled", true)) return null;
+        String entityName = config.getString("entity", mobId);
         try {
-            eggMaterial = Material.valueOf((String)(mobId.toUpperCase() + "_SPAWN_EGG"));
+            eggMaterial = Material.valueOf(entityName.toUpperCase() + "_SPAWN_EGG");
         }
         catch (IllegalArgumentException e) {
             return null;
         }
-        String displayName = this.plugin.getMobManager().getMobConfig(mobId.toUpperCase()) != null ? this.plugin.getMobManager().getMobConfig(mobId.toUpperCase()).getString("display-name", mobId) : mobId;
-        ItemStack item = new ItemStack(eggMaterial);
+        String displayName = config != null ? config.getString("display-name", mobId) : mobId;
+        ItemStack item = new ItemBuilder(eggMaterial)
+                .name(Messages.parse("<green><bold><name> SPAWNER</bold></green>", Messages.value("name", displayName)))
+                .loreComponents(java.util.List.of(
+                        Messages.parse("<gray>• Right-click → spawn this configured mob</gray>"),
+                        Messages.parse("<gray>• Mob → <white><name></white></gray>", Messages.value("name", displayName))))
+                .build();
         ItemMeta meta = item.getItemMeta();
-        meta.setDisplayName(Utils.colorize("&a" + displayName + " Spawner"));
-        meta.setLore(List.of(Utils.colorize("&7Right click to spawn a"), Utils.colorize("&7custom " + displayName + ".")));
-        meta.getPersistentDataContainer().set(this.mobIdKey, PersistentDataType.STRING, (Object)mobId.toUpperCase());
+        meta.getPersistentDataContainer().set(this.mobIdKey, PersistentDataType.STRING, mobId.toUpperCase());
         item.setItemMeta(meta);
         return item;
     }
@@ -59,4 +65,3 @@ public class SpawnEggManager {
         return this.getMobId(item) != null;
     }
 }
-

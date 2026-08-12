@@ -31,7 +31,7 @@ implements CommandExecutor {
 
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         EntityType entityType;
-        if (!sender.hasPermission("growapet.admin")) {
+        if (!sender.hasPermission("growapet.admin.give")) {
             sender.sendMessage("\u00a7cYou do not have permission.");
             return true;
         }
@@ -51,6 +51,7 @@ implements CommandExecutor {
             sender.sendMessage("\u00a7cUnknown entity type: " + args[1]);
             return true;
         }
+        if (!entityType.isAlive() || !entityType.isSpawnable() || entityType == EntityType.PLAYER || entityType == EntityType.ARMOR_STAND) { sender.sendMessage("§cThat entity cannot safely be a pet."); return true; }
         int seconds = 60;
         if (args.length >= 3) {
             try {
@@ -61,10 +62,11 @@ implements CommandExecutor {
                 return true;
             }
         }
+        if (seconds < 1 || seconds > 604800) { sender.sendMessage("§cIncubation must be 1-604800 seconds."); return true; }
         ItemStack egg = this.plugin.getEggManager().createEgg(entityType, seconds);
-        target.getInventory().addItem(new ItemStack[]{egg});
+        java.util.Map<Integer,ItemStack> overflow=target.getInventory().addItem(egg);
+        overflow.values().forEach(left->target.getWorld().dropItemNaturally(target.getLocation(),left));
         sender.sendMessage("\u00a7aGave " + target.getName() + " a " + entityType.name() + " egg.");
         return true;
     }
 }
-

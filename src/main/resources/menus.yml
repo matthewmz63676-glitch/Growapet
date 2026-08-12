@@ -1,5 +1,5 @@
-# GUI menu layouts. No GUIs are implemented yet (see gui/ package) — this
-# schema is the intended shape once they are.
+# Optional menu layout overrides. GrowAPet supplies secure defaults when a key
+# is absent, so existing live configuration can be extended without replacement.
 warp-gui:
   title: "&8Warps"
   size: 27

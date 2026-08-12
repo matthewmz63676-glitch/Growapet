@@ -5,12 +5,13 @@ author: Justanother_Game
 description: A pet progression plugin featuring mob zones, pet collection, rebirths, upgrades and custom combat.
 api-version: 1.21
 
-soft-depend: [Vault, PlaceholderAPI, WorldGuard, FancyHolograms, LuckPerms]
+depend: [packetevents, WorldGuard]
+soft-depend: [PlaceholderAPI, LuckPerms]
 
 commands:
   growapet:
     description: GrowAPet admin command
-    usage: /growapet <reload|give|setlevel|setcoins|setgems>
+    usage: /growapet <reload|give|setlevel|setcoins|setgems|setcredits|event|creditreceipt>
   plot:
     description: Manage your plot
     usage: /plot [home|settings]
@@ -25,28 +26,29 @@ commands:
     usage: /zones
   quests:
     description: View your quests
-    usage: /quests
+    usage: /quests [claim <questId>]
   trade:
     description: Trade with another player
-    usage: /trade <player>
+    usage: /trade <player|accept|offer|confirm|cancel>
   stats:
     description: View your stats
     usage: /stats
   leaderboard:
     description: View leaderboards
-    usage: /leaderboard [coins|gems|credits|level|mobkills|bosskills|damage|coinmulti|gemsmulti]
+    aliases: [leaderboards]
+    usage: /leaderboard [coins|gems|credits|level|mobkills|bosskills|damage|coinmulti|gemsmulti|power|playtime|eggs|pets|trades|highestpet]
   boss:
     description: View active boss info
-    usage: /boss
+    usage: /boss [spawn <bossId>]
   options:
     description: View plugin options
-    usage: /options
+    usage: /options [actionbar|trade]
   visit:
     description: Visit another player's plot
     usage: /visit <player>
   getmob:
     description: Get a mob spawn item (admin)
-    usage: /getmob <player> <entityType> [amount]
+    usage: /getmob <player> <mob_name>
   getegg:
     description: Get an egg item (admin)
     usage: /getegg <player> <entityType> [incubateSeconds]
@@ -54,8 +56,8 @@ commands:
     description: Get a customized spawn egg (admin)
     usage: /getpet <player> <mob_name>
   shop:
-    description: Open the multiplier shop
-    usage: /shop
+    description: Open gear, multiplier, and egg shops
+    usage: /shop [eggs]
   spawn:
     description: Teleport to spawn
     usage: /spawn
@@ -68,11 +70,41 @@ commands:
   unlockzone:
     description: Force-unlock a zone for a player (admin)
     usage: /unlockzone <player> <zoneId>
+  autokill:
+    description: Instantly defeat the tracked GrowAPet mob in your crosshair
+    usage: /autokill
+  daily:
+    description: Claim the free 24-hour Credit reward
+    usage: /daily
 
 permissions:
   growapet.admin:
     description: Access to all GrowAPet admin commands
     default: op
+    children:
+      growapet.admin.reload: true
+      growapet.admin.economy: true
+      growapet.admin.give: true
+      growapet.admin.mob: true
+      growapet.admin.boss: true
+      growapet.admin.spawn: true
+      growapet.admin.zones: true
+      growapet.admin.events: true
+      growapet.admin.bypass: true
+      growapet.admin.leaderboards: true
+  growapet.admin.reload: { default: op }
+  growapet.admin.economy: { default: op }
+  growapet.admin.give: { default: op }
+  growapet.admin.mob: { default: op }
+  growapet.admin.boss: { default: op }
+  growapet.admin.spawn: { default: op }
+  growapet.admin.zones: { default: op }
+  growapet.admin.events: { default: op }
+  growapet.admin.bypass: { default: op }
+  growapet.admin.leaderboards: { default: op }
   growapet.chat.color:
     description: Use & colour codes and #RRGGBB hex codes in chat
+    default: op
+  growapet.autokill:
+    description: Use /autokill on tracked GrowAPet mobs
     default: op
