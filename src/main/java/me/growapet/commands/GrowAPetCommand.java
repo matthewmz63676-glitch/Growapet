@@ -2,6 +2,7 @@ package me.growapet.commands;
 
 import me.growapet.GrowAPet;
 import me.growapet.events.EventType;
+import me.growapet.diagnostics.ReadinessDoctor;
 import me.growapet.models.PlayerData;
 import me.growapet.utils.Messages;
 import net.kyori.adventure.text.Component;
@@ -22,11 +23,12 @@ public final class GrowAPetCommand implements CommandExecutor {
 
     @Override public boolean onCommand(CommandSender sender,Command command,String label,String[]args){
         if(args.length==0){Messages.send(sender,"<aqua><bold>GROWAPET ADMIN</bold></aqua> <dark_gray>•</dark_gray> <gray>reload, economy, events and receipts</gray>");return true;}
-        String sub=args[0].toLowerCase(Locale.ROOT);String permission="growapet.admin."+switch(sub){case"reload"->"reload";case"event"->"events";case"give"->"give";default->"economy";};
+        String sub=args[0].toLowerCase(Locale.ROOT);String permission="growapet.admin."+switch(sub){case"reload"->"reload";case"doctor"->"doctor";case"event"->"events";case"give"->"give";default->"economy";};
         if(!sender.hasPermission(permission)){Messages.send(sender,"<red>ɪɴᴠᴀɪʟᴅ ᴄᴏᴍᴍᴀɴᴅ</red>");return true;}
         try{
             switch(sub){
                 case"reload"->{if(plugin.reloadRuntime()){audit(sender,"reload",null,"");Messages.send(sender,"<green>Configuration reloaded and revalidated.</green>");}else Messages.send(sender,"<red>Reload rejected; last-known-good values remain active.</red>");}
+                case"doctor"->{if(args.length!=1)throw new IllegalArgumentException();runDoctor(sender);}
                 case"setlevel"->{if(args.length!=3)throw new IllegalArgumentException();Player target=requirePlayer(args[1]);PlayerData data=requireData(target);long parsed=Long.parseLong(args[2]);if(parsed<1||parsed>Integer.MAX_VALUE)throw new IllegalArgumentException();int oldLevel=data.getLevel();long oldExp=data.getExp();data.setLevel((int)parsed);data.setExp(0);plugin.getPlayerManager().syncExpBar(target,data);plugin.getPlayerManager().saveNonEconomic(data).whenComplete((ignored,error)->onMain(()->{if(error!=null){data.setLevel(oldLevel);data.setExp(oldExp);plugin.getPlayerManager().syncExpBar(target,data);Messages.send(sender,"<red>Level update failed safely.</red>");return;}audit(sender,"setlevel",target.getUniqueId().toString(),String.valueOf(parsed));Messages.send(sender,"<green>Updated <white><player></white>.</green>",Messages.value("player",target.getName()));}));}
                 case"setcoins","setgems","setcredits"->{if(args.length!=3)throw new IllegalArgumentException();Player target=requirePlayer(args[1]);PlayerData data=requireData(target);long value=Long.parseLong(args[2]);if(value<0)throw new IllegalArgumentException();mutateCurrency(sender,target,data,sub,value,false);}
                 case"give"->{if(args.length!=4)throw new IllegalArgumentException();Player target=requirePlayer(args[1]);PlayerData data=requireData(target);long amount=Long.parseLong(args[3]);if(amount<=0)throw new IllegalArgumentException();String currency=args[2].toLowerCase(Locale.ROOT);if(!currency.equals("coins")&&!currency.equals("gems")&&!currency.equals("credits"))throw new IllegalArgumentException();mutateCurrency(sender,target,data,currency,amount,true);}
@@ -36,6 +38,21 @@ public final class GrowAPetCommand implements CommandExecutor {
             }
         }catch(Exception error){Messages.send(sender,"<red>Invalid command, value, or target.</red>");}
         return true;
+    }
+
+    private void runDoctor(CommandSender sender) {
+        Messages.send(sender, "<aqua><bold>GROWAPET READINESS CHECK</bold></aqua> <dark_gray>•</dark_gray> <gray>read-only diagnostics in progress...</gray>");
+        new ReadinessDoctor(plugin).run().whenComplete((report, error) -> onMain(() -> {
+            if (error != null) {
+                Messages.send(sender, "<red>Readiness check failed safely: <white><reason></white></red>", Messages.value("reason", rootMessage(error)));
+                return;
+            }
+            for (ReadinessDoctor.Check check : report.checks()) {
+                sender.sendMessage(Component.text(check.symbol() + " ", check.color()).append(Component.text(check.name() + ": ", net.kyori.adventure.text.format.NamedTextColor.WHITE)).append(Component.text(check.detail(), net.kyori.adventure.text.format.NamedTextColor.GRAY)));
+            }
+            String summary = report.healthy() ? "<green><bold>READY CHECK PASSED</bold></green>" : "<red><bold>READY CHECK FOUND BLOCKERS</bold></red>";
+            Messages.send(sender, summary + " <dark_gray>•</dark_gray> <gray><failures> blocker(s), <warnings> warning(s)</gray>", Messages.value("failures", report.failures()), Messages.value("warnings", report.warnings()));
+        }));
     }
 
     private void mutateCurrency(CommandSender sender,Player target,PlayerData data,String operation,long value,boolean add){
@@ -61,5 +78,6 @@ public final class GrowAPetCommand implements CommandExecutor {
     private Player requirePlayer(String name){Player player=Bukkit.getPlayerExact(name);if(player==null)throw new IllegalArgumentException();return player;}
     private PlayerData requireData(Player player){PlayerData data=plugin.getPlayerManager().get(player);if(data==null)throw new IllegalStateException();return data;}
     private void onMain(Runnable action){Bukkit.getScheduler().runTask(plugin,action);}
+    private static String rootMessage(Throwable error){Throwable current=error;while(current.getCause()!=null)current=current.getCause();return current.getMessage()==null?current.getClass().getSimpleName():current.getMessage();}
     private void audit(CommandSender actor,String action,String target,String details){String actorName=actor.getName();plugin.getDatabase().async(connection->{try(PreparedStatement statement=connection.prepareStatement("INSERT INTO admin_audit(actor,action,target,details,created_at)VALUES(?,?,?,?,?)")){statement.setString(1,actorName);statement.setString(2,action);statement.setString(3,target);statement.setString(4,details);statement.setLong(5,System.currentTimeMillis());statement.executeUpdate();}return null;}).exceptionally(error->{plugin.getLogger().severe("Failed to write admin audit: "+error.getMessage());return null;});}
 }

@@ -2,6 +2,8 @@ package me.growapet.tutorial;
 
 import me.growapet.GrowAPet;
 import me.growapet.utils.Messages;
+import me.growapet.utils.LocationSafety;
+import me.growapet.display.VirtualTextDisplayService;
 import org.bukkit.Bukkit;
 import org.bukkit.World;
 import org.bukkit.configuration.ConfigurationSection;
@@ -10,6 +12,7 @@ import org.bukkit.entity.Player;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -21,6 +24,7 @@ public final class TutorialManager {
     private final Map<UUID, TutorialNpcSession> sessions = new HashMap<>();
     private final Set<UUID> transitions = ConcurrentHashMap.newKeySet();
     private final Set<UUID> starting = ConcurrentHashMap.newKeySet();
+    private final Map<UUID, Set<VirtualTextDisplayService.Handle>> previews = new HashMap<>();
 
     public TutorialManager(GrowAPet plugin) { this.plugin = plugin; }
 
@@ -69,10 +73,12 @@ public final class TutorialManager {
 
     private void begin(Player player, Route route, TutorialStage stage) {
         org.bukkit.Location sessionStart = startFor(route, stage);
+        org.bukkit.Location safeStart = LocationSafety.prepareForUse(sessionStart, "tutorial route start");
+        if (safeStart == null) { Messages.send(player, "<red>The tutorial start point is unavailable or unsafe. An admin must run <white>/tutorial validate</white>.</red>"); return; }
         Runnable spawn = () -> {
             if (!player.isOnline() || sessions.containsKey(player.getUniqueId())) return;
             try {
-                TutorialNpcSession session = new TutorialNpcSession(plugin, player, sessionStart, route.speed, stage);
+                TutorialNpcSession session = new TutorialNpcSession(plugin, player, safeStart, route.speed, stage);
                 sessions.put(player.getUniqueId(), session);
                 session.spawn();
                 session.swingArm();
@@ -85,10 +91,10 @@ public final class TutorialManager {
                 Messages.send(player, "<red>The tutorial NPC could not be created. Check PacketEvents and the route configuration.</red>");
             }
         };
-        if (route.teleportPlayer && (!player.getWorld().equals(sessionStart.getWorld()) || player.getLocation().distanceSquared(sessionStart) > 256.0D)) {
-            player.teleportAsync(sessionStart).thenAccept(success -> onMain(() -> { if (success) spawn.run(); else Messages.send(player, "<red>Could not teleport to the tutorial route.</red>"); }));
-        } else if (!player.getWorld().equals(sessionStart.getWorld())) {
-            Messages.send(player, "<red>Travel to <white><world></white> before starting the tutorial.</red>", Messages.value("world", sessionStart.getWorld().getName()));
+        if (route.teleportPlayer && (!player.getWorld().equals(safeStart.getWorld()) || player.getLocation().distanceSquared(safeStart) > 256.0D)) {
+            player.teleportAsync(safeStart).thenAccept(success -> onMain(() -> { if (success) spawn.run(); else Messages.send(player, "<red>Could not teleport to the tutorial route.</red>"); }));
+        } else if (!player.getWorld().equals(safeStart.getWorld())) {
+            Messages.send(player, "<red>Travel to <white><world></white> before starting the tutorial.</red>", Messages.value("world", safeStart.getWorld().getName()));
         } else spawn.run();
     }
 
@@ -152,8 +158,8 @@ public final class TutorialManager {
     }
 
     public void stop(Player player) { forceStop(player); Messages.send(player, "<yellow>Tutorial visuals stopped.</yellow> <gray>Your saved progress was kept.</gray>"); }
-    public void forceStop(Player player) { requireMain(); TutorialNpcSession session = sessions.remove(player.getUniqueId()); transitions.remove(player.getUniqueId()); starting.remove(player.getUniqueId()); if (session != null) session.despawn(); }
-    public void shutdown() { requireMain(); for (TutorialNpcSession session : sessions.values()) session.despawn(); sessions.clear(); transitions.clear(); starting.clear(); }
+    public void forceStop(Player player) { requireMain(); TutorialNpcSession session = sessions.remove(player.getUniqueId()); transitions.remove(player.getUniqueId()); starting.remove(player.getUniqueId()); if (session != null) session.despawn(); clearPreview(player.getUniqueId()); }
+    public void shutdown() { requireMain(); for (TutorialNpcSession session : sessions.values()) session.despawn(); sessions.clear(); for (UUID playerId : Set.copyOf(previews.keySet())) clearPreview(playerId); transitions.clear(); starting.clear(); }
     public void onPlayerReady(Player player) { if (plugin.getConfigManager().tutorial().getBoolean("tutorial.auto-start", false)) start(player, false); }
     public boolean isRunning(UUID playerId) { return sessions.containsKey(playerId); }
 
@@ -163,10 +169,67 @@ public final class TutorialManager {
                 .whenComplete((ignored, error) -> onMain(() -> Messages.send(target, error == null ? "<green>Tutorial progress reset.</green>" : "<red>Tutorial progress could not be reset.</red>")));
     }
 
+    /** Saves one route point from an admin's current location. */
+    public boolean setPoint(String point, org.bukkit.Location location) {
+        requireMain();
+        if (!List.of("start", "mob", "shop", "egg").contains(point) || location == null || location.getWorld() == null) return false;
+        String problem = LocationSafety.problem(location, "tutorial route " + point, true);
+        if (problem != null) return false;
+        ConfigurationSection root = plugin.getConfigManager().tutorial().getConfigurationSection("tutorial");
+        if (root == null) return false;
+        root.set("world", location.getWorld().getName());
+        root.set("route." + point + ".x", location.getX()); root.set("route." + point + ".y", location.getY()); root.set("route." + point + ".z", location.getZ());
+        root.set("route." + point + ".yaw", location.getYaw()); root.set("route." + point + ".pitch", location.getPitch());
+        plugin.getConfigManager().save("tutorial.yml");
+        return true;
+    }
+
+    /** Returns actionable route errors without changing state or loading chunks. */
+    public java.util.List<String> validateRoute() {
+        ConfigurationSection root = plugin.getConfigManager().tutorial().getConfigurationSection("tutorial");
+        if (root == null || !root.getBoolean("enabled", true)) return List.of("tutorial is disabled");
+        World world = Bukkit.getWorld(root.getString("world", ""));
+        if (world == null) return List.of("tutorial world '" + root.getString("world", "") + "' is not loaded");
+        java.util.List<String> problems = new java.util.ArrayList<>();
+        for (String point : List.of("start", "mob", "shop", "egg")) {
+            double x = root.getDouble("route." + point + ".x", Double.NaN), y = root.getDouble("route." + point + ".y", Double.NaN), z = root.getDouble("route." + point + ".z", Double.NaN);
+            String problem = LocationSafety.problem(new org.bukkit.Location(world, x, y, z), "tutorial route " + point, false);
+            if (problem != null) problems.add(problem);
+        }
+        return List.copyOf(problems);
+    }
+
+    /** Shows temporary packet-only labels at each route point for the requesting admin. */
+    public boolean preview(Player player) {
+        requireMain();
+        if (player == null) return false;
+        java.util.List<String> problems = validateRoute();
+        if (!problems.isEmpty()) return false;
+        clearPreview(player.getUniqueId());
+        ConfigurationSection root = plugin.getConfigManager().tutorial().getConfigurationSection("tutorial");
+        World world = Bukkit.getWorld(root.getString("world"));
+        Set<VirtualTextDisplayService.Handle> handles = new java.util.HashSet<>();
+        for (String point : List.of("start", "mob", "shop", "egg")) {
+            org.bukkit.Location location = location(world, root, "route." + point).add(0, 1.6, 0);
+            handles.add(plugin.getVirtualTextDisplays().create(location, Messages.parse("<aqua><bold>" + point.toUpperCase(java.util.Locale.ROOT) + " ROUTE POINT</bold></aqua>"), viewer -> viewer.getUniqueId().equals(player.getUniqueId())));
+        }
+        previews.put(player.getUniqueId(), handles);
+        Bukkit.getScheduler().runTaskLater(plugin, () -> clearPreview(player.getUniqueId()), 200L);
+        Messages.send(player, "<aqua><bold>TUTORIAL PREVIEW</bold></aqua> <dark_gray>•</dark_gray> <gray>Route labels are visible only to you for 10 seconds.</gray>");
+        return true;
+    }
+
+    private void clearPreview(UUID playerId) {
+        Set<VirtualTextDisplayService.Handle> handles = previews.remove(playerId);
+        if (handles == null) return;
+        for (VirtualTextDisplayService.Handle handle : handles) plugin.getVirtualTextDisplays().remove(handle);
+    }
+
     private boolean enabled() { return plugin.getConfigManager().tutorial().getBoolean("tutorial.enabled", true); }
     private Route route() {
         ConfigurationSection root = plugin.getConfigManager().tutorial().getConfigurationSection("tutorial");
         if (root == null) return null;
+        if (!validateRoute().isEmpty()) return null;
         World world = Bukkit.getWorld(root.getString("world", "world")); if (world == null) return null;
         return new Route(location(world, root, "route.start"), location(world, root, "route.mob"),
                 location(world, root, "route.shop"), location(world, root, "route.egg"),

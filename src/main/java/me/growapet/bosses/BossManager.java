@@ -3,6 +3,7 @@ package me.growapet.bosses;
 import me.growapet.GrowAPet;
 import me.growapet.events.EventType;
 import me.growapet.utils.Messages;
+import me.growapet.utils.LocationSafety;
 import me.growapet.zones.Zone;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -187,11 +188,16 @@ public final class BossManager {
 
     private Location resolve(ConfigurationSection config) {
         Zone zone = plugin.getZoneManager().getZone(config.getString("zone", ""));
-        if (zone != null) return plugin.getZoneManager().center(zone);
+        if (zone != null) {
+            Location center = plugin.getZoneManager().center(zone);
+            return center == null ? null : LocationSafety.prepareForUse(center, "boss zone center");
+        }
         String worldName = config.getString("world");
         if (worldName == null) return null;
         World world = Bukkit.getWorld(worldName);
-        return world == null ? null : new Location(world, config.getDouble("x"), config.getDouble("y"), config.getDouble("z"));
+        if (world == null) return null;
+        Location configured = new Location(world, config.getDouble("x"), config.getDouble("y"), config.getDouble("z"));
+        return LocationSafety.prepareForUse(configured, "boss location");
     }
 
     private void cullForViewers() {

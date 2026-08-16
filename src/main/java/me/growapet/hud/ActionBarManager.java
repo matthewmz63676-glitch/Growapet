@@ -2,6 +2,7 @@ package me.growapet.hud;
 
 import me.growapet.GrowAPet;
 import me.growapet.models.PlayerData;
+import me.growapet.utils.Messages;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.configuration.ConfigurationSection;
@@ -32,6 +33,26 @@ public final class ActionBarManager implements Listener {
 
     public void start() {
         task = Bukkit.getScheduler().runTaskTimer(plugin, this::tick, 1L, 10L);
+    }
+
+    /** Sends the configured hosted HUD pack once a player profile is ready. */
+    public void requestResourcePack(Player player) {
+        if (!Bukkit.isPrimaryThread()) throw new IllegalStateException("Resource-pack requests must run on the server thread");
+        if (player == null) return;
+        ConfigurationSection section = plugin.getConfigManager().hud().getConfigurationSection("resource-pack");
+        if (section == null || !section.getBoolean("enabled", false)) return;
+        String url = section.getString("url", "").trim();
+        byte[] hash = decodeSha1(section.getString("sha1", ""));
+        if (!url.startsWith("https://") || hash == null) {
+            plugin.getLogger().warning("HUD resource pack is enabled but its HTTPS URL or SHA-1 is invalid; Unicode fallback remains active.");
+            return;
+        }
+        Component prompt = Messages.parse(section.getString("prompt", "<aqua>Load the GrowAPet HUD pack?</aqua>"));
+        try {
+            player.setResourcePack(url, hash, prompt, section.getBoolean("required", false));
+        } catch (RuntimeException error) {
+            plugin.getLogger().warning("Could not send the HUD resource pack to " + player.getName() + ": " + error.getMessage());
+        }
     }
 
     public void showTemporary(Player player, Component message, Duration duration, int priority) {
@@ -65,6 +86,8 @@ public final class ActionBarManager implements Listener {
     boolean spritesReady(Player player) {
         return player != null && spritePackReady.contains(player.getUniqueId());
     }
+
+    public int readySpritePlayers() { return spritePackReady.size(); }
 
     private void tick() {
         long now = System.currentTimeMillis();
@@ -101,6 +124,14 @@ public final class ActionBarManager implements Listener {
 
     private static long saturatedAdd(long left, long right) {
         return right > 0 && left > Long.MAX_VALUE - right ? Long.MAX_VALUE : left + right;
+    }
+
+    private static byte[] decodeSha1(String value) {
+        String normalized = value == null ? "" : value.replace(" ", "").trim();
+        if (!normalized.matches("(?i)[0-9a-f]{40}")) return null;
+        byte[] result = new byte[20];
+        for (int i = 0; i < result.length; i++) result[i] = (byte) Integer.parseInt(normalized.substring(i * 2, i * 2 + 2), 16);
+        return result;
     }
 
     private record Override(Component message, long expiresAt, int priority) {}

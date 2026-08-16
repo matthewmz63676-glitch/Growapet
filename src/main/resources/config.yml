@@ -37,6 +37,14 @@ combat:
   # Defensive ceiling for malformed or externally-created weapon metadata.
   max-hit-damage: 1000000.0
 
+mob-spawns:
+  # Population points are created with /mobspawn set and are disabled safely
+  # when their world/zone is unavailable. Values are deliberately bounded.
+  tick-period-ticks: 100
+  spawn-burst-per-tick: 2
+  max-tracked-mobs: 5000
+  max-respawn-queue: 5000
+
 virtual-displays:
   view-distance: 64.0
 

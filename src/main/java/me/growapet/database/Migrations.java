@@ -18,7 +18,8 @@ final class Migrations {
                 new Migration(5, Migrations::creditProgressionSchema),
                 new Migration(6, Migrations::durableBossSchema),
                 new Migration(7, Migrations::durableMobRespawnSchema),
-                new Migration(8, Migrations::tutorialProgressSchema)
+                new Migration(8, Migrations::tutorialProgressSchema),
+                new Migration(9, Migrations::persistentMobSpawnSchema)
         );
     }
 
@@ -108,6 +109,14 @@ final class Migrations {
                 "CREATE TABLE IF NOT EXISTS tutorial_progress (player_uuid TEXT PRIMARY KEY, stage TEXT NOT NULL DEFAULT 'MOB', updated_at INTEGER NOT NULL)",
                 "CREATE INDEX IF NOT EXISTS idx_tutorial_stage ON tutorial_progress(stage)"
         );
+    }
+
+    private static void persistentMobSpawnSchema(Connection connection) throws SQLException {
+        execute(connection,
+                "CREATE TABLE IF NOT EXISTS mob_spawn_points (spawn_id TEXT PRIMARY KEY, mob_id TEXT NOT NULL, world TEXT NOT NULL, x REAL NOT NULL, y REAL NOT NULL, z REAL NOT NULL, yaw REAL NOT NULL DEFAULT 0, pitch REAL NOT NULL DEFAULT 0, zone_id TEXT NOT NULL DEFAULT '', max_count INTEGER NOT NULL DEFAULT 1, enabled INTEGER NOT NULL DEFAULT 1, created_at INTEGER NOT NULL)",
+                "CREATE INDEX IF NOT EXISTS idx_mob_spawn_points_zone ON mob_spawn_points(zone_id)");
+        addColumn(connection, "mob_respawns", "spawn_point_id", "TEXT");
+        execute(connection, "CREATE INDEX IF NOT EXISTS idx_mob_respawns_spawn_point ON mob_respawns(spawn_point_id)");
     }
 
     private static void execute(Connection connection, String... statements) throws SQLException {

@@ -22,6 +22,16 @@ sprites:
   damage: "growapet:damage"
   level: "growapet:level"
 
+# Optional hosted pack for the HUD sprites. Keep disabled until the ZIP is
+# served from an HTTPS URL and its exact SHA-1 is known. Unicode icons remain
+# the automatic fallback when this pack is declined or unavailable.
+resource-pack:
+  enabled: false
+  url: ""
+  sha1: ""
+  required: false
+  prompt: "<aqua><bold>GROWAPET HUD</bold></aqua> <gray>Load the optional HUD sprites for a cleaner actionbar.</gray>"
+
 actionbar:
   enabled: true
   format: "%sprite_coin% &6%coins% &7• %sprite_gem% &a%gems% &7• %sprite_credit% &b%credits% &7• %sprite_damage% &c%damage%x &7• %sprite_level% &dLv.%level% &7(&a%exp_bar%&7)"

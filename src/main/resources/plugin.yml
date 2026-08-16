@@ -11,7 +11,7 @@ soft-depend: [PlaceholderAPI, LuckPerms]
 commands:
   growapet:
     description: GrowAPet admin command
-    usage: /growapet <reload|give|setlevel|setcoins|setgems|setcredits|event|creditreceipt>
+    usage: /growapet <doctor|reload|give|setlevel|setcoins|setgems|setcredits|event|creditreceipt>
   plot:
     description: Manage your plot
     usage: /plot [home|settings]
@@ -49,6 +49,9 @@ commands:
   getmob:
     description: Get a mob spawn item (admin)
     usage: /getmob <player> <mob_name>
+  mobspawn:
+    description: Manage persistent GrowAPet mob population points (admin)
+    usage: /mobspawn <set|remove|list> [id] [mob] [max]
   getegg:
     description: Get an egg item (admin)
     usage: /getegg <player> <entityType> [incubateSeconds]
@@ -78,7 +81,7 @@ commands:
     usage: /daily
   tutorial:
     description: Start or manage the GrowAPet onboarding tutorial
-    usage: /tutorial [start|stop] or /tutorial <start|stop|reset> <player>
+    usage: /tutorial [start|stop] or /tutorial <start|stop|reset|setpoint|preview|validate> ...
 
 permissions:
   growapet.admin:
@@ -86,6 +89,7 @@ permissions:
     default: op
     children:
       growapet.admin.reload: true
+      growapet.admin.doctor: true
       growapet.admin.economy: true
       growapet.admin.give: true
       growapet.admin.mob: true
@@ -99,6 +103,9 @@ permissions:
       growapet.admin.tutorial: true
       growapet.tutorial: true
   growapet.admin.reload: { default: op }
+  growapet.admin.doctor:
+    description: Run read-only GrowAPet readiness diagnostics
+    default: op
   growapet.admin.economy: { default: op }
   growapet.admin.give: { default: op }
   growapet.admin.mob: { default: op }

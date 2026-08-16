@@ -4,6 +4,7 @@ import me.growapet.GrowAPet;
 import me.growapet.display.VirtualTextDisplayService;
 import me.growapet.models.Pet;
 import me.growapet.models.PlayerData;
+import me.growapet.utils.LocationSafety;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
@@ -35,6 +36,7 @@ import java.util.UUID;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public final class MobManager {
     private final GrowAPet plugin;
@@ -49,7 +51,10 @@ public final class MobManager {
     private final NamespacedKey currentHealthKey;
     private final NamespacedKey weaponDamageKey;
     private final NamespacedKey respawnIdKey;
+    private final NamespacedKey spawnPointKey;
     private final Set<UUID> scheduledRespawns = ConcurrentHashMap.newKeySet();
+    private final Map<UUID, String> respawnPointIds = new ConcurrentHashMap<>();
+    private final AtomicInteger pendingRespawns = new AtomicInteger();
     private BukkitTask task;
 
     public MobManager(GrowAPet plugin) {
@@ -59,6 +64,7 @@ public final class MobManager {
         this.currentHealthKey = new NamespacedKey(plugin, "mob_health");
         this.weaponDamageKey = new NamespacedKey(plugin, "damage");
         this.respawnIdKey = new NamespacedKey(plugin, "respawn_id");
+        this.spawnPointKey = new NamespacedKey(plugin, "spawn_point_id");
     }
 
     public void start() {
@@ -87,6 +93,8 @@ public final class MobManager {
         mobZones.clear();
         viewerZones.clear();
         scheduledRespawns.clear();
+        respawnPointIds.clear();
+        pendingRespawns.set(0);
     }
 
     public ConfigurationSection getMobConfig(String mobId) {
@@ -95,15 +103,21 @@ public final class MobManager {
     }
 
     public LivingEntity spawnMob(String mobId, Location location) {
-        return spawnMobDetailed(mobId, location, null, true).entity();
+        return spawnMobDetailed(mobId, location, null, true, null).entity();
     }
 
     /** Administrative placement intentionally bypasses zone membership, but still validates the configured mob. */
     public SpawnResult spawnAdminMob(String mobId, Location location) {
-        return spawnMobDetailed(mobId, location, null, false);
+        return spawnMobDetailed(mobId, location, null, false, null);
     }
 
-    private SpawnResult spawnMobDetailed(String mobId, Location location, UUID respawnId, boolean enforceConfiguredZone) {
+    /** Spawns a population member and binds it to a persistent spawn-point ID. */
+    public SpawnResult spawnFromPoint(String mobId, Location location, String spawnPointId) {
+        if (spawnPointId == null || spawnPointId.isBlank()) return SpawnResult.failed(SpawnFailure.INVALID_SPAWN_POINT, "A spawn-point ID is required.");
+        return spawnMobDetailed(mobId, location, null, false, spawnPointId);
+    }
+
+    private SpawnResult spawnMobDetailed(String mobId, Location location, UUID respawnId, boolean enforceConfiguredZone, String spawnPointId) {
         if (mobId == null || location == null || location.getWorld() == null) return SpawnResult.failed(SpawnFailure.INVALID_LOCATION, "The target world is not loaded.");
         String normalizedId = mobId.toUpperCase(Locale.ROOT);
         ConfigurationSection config = getMobConfig(normalizedId);
@@ -114,6 +128,8 @@ public final class MobManager {
             plugin.getLogger().warning("Refused to spawn mob " + normalizedId + " outside configured zone '" + configuredZone + "'.");
             return SpawnResult.failed(SpawnFailure.WRONG_ZONE, "This mob is configured for zone '" + configuredZone + "'.");
         }
+        String locationProblem = LocationSafety.problem(location, "mob spawn location", false);
+        if (locationProblem != null) return SpawnResult.failed(SpawnFailure.INVALID_LOCATION, locationProblem);
         var actualZone = plugin.getZoneManager().getZoneAt(location);
         String visibilityZone = actualZone == null ? (enforceConfiguredZone ? configuredZone : "") : actualZone.getId();
 
@@ -164,6 +180,8 @@ public final class MobManager {
         pdc.set(mobIdKey, PersistentDataType.STRING, normalizedId);
         pdc.set(currentHealthKey, PersistentDataType.DOUBLE, maxHealth);
         if (respawnId != null) pdc.set(respawnIdKey, PersistentDataType.STRING, respawnId.toString());
+        if (spawnPointId != null && !spawnPointId.isBlank()) pdc.set(spawnPointKey, PersistentDataType.STRING, spawnPointId);
+        else pdc.remove(spawnPointKey);
         pdc.remove(rewardedKey);
         customMaxHealth.put(entity.getUniqueId(), maxHealth);
         customHealth.put(entity.getUniqueId(), maxHealth);
@@ -245,24 +263,32 @@ public final class MobManager {
         MobRewards.grant(plugin, killer, mobId);
 
         int respawnSeconds = config == null ? 5 : Math.max(0, config.getInt("respawn-seconds", 5));
-        if (respawnSeconds > 0) queueRespawn(mobId, deathLocation, respawnSeconds);
+        String spawnPointId = pdc.get(spawnPointKey, PersistentDataType.STRING);
+        if (respawnSeconds > 0) queueRespawn(mobId, deathLocation, respawnSeconds, spawnPointId);
         return true;
     }
 
-    private void queueRespawn(String mobId, Location location, int seconds) {
+    private void queueRespawn(String mobId, Location location, int seconds, String spawnPointId) {
         if (location.getWorld() == null) return;
+        int maxQueue = Math.max(1, plugin.getConfigManager().config().getInt("mob-spawns.max-respawn-queue", 5000));
+        if (pendingRespawns.get() >= maxQueue) {
+            plugin.getLogger().warning("Mob respawn queue reached its configured cap (" + maxQueue + "); skipping a new respawn.");
+            return;
+        }
+        pendingRespawns.incrementAndGet();
         UUID id = UUID.randomUUID();
         long due = System.currentTimeMillis() + Math.max(1, seconds) * 1000L;
-        Respawn row = Respawn.capture(id, mobId, location, due);
+        Respawn row = Respawn.capture(id, mobId, location, due, spawnPointId);
+        if (spawnPointId != null && !spawnPointId.isBlank()) respawnPointIds.put(id, spawnPointId);
         plugin.getDatabase().async(connection -> {
-            try (PreparedStatement statement = connection.prepareStatement("INSERT INTO mob_respawns(respawn_id,mob_id,world,x,y,z,yaw,pitch,due_at) VALUES(?,?,?,?,?,?,?,?,?)")) {
+            try (PreparedStatement statement = connection.prepareStatement("INSERT INTO mob_respawns(respawn_id,mob_id,world,x,y,z,yaw,pitch,due_at,spawn_point_id) VALUES(?,?,?,?,?,?,?,?,?,?)")) {
                 statement.setString(1, row.id.toString()); statement.setString(2, row.mobId); statement.setString(3, row.world);
                 statement.setDouble(4, row.x); statement.setDouble(5, row.y); statement.setDouble(6, row.z);
-                statement.setFloat(7, row.yaw); statement.setFloat(8, row.pitch); statement.setLong(9, row.dueAt); statement.executeUpdate();
+                statement.setFloat(7, row.yaw); statement.setFloat(8, row.pitch); statement.setLong(9, row.dueAt); statement.setString(10, row.spawnPointId); statement.executeUpdate();
             }
             return null;
         }).whenComplete((ignored, error) -> {
-            if (error != null) plugin.getLogger().severe("Failed to persist mob respawn " + id + ": " + error.getMessage());
+            if (error != null) { respawnPointIds.remove(id); pendingRespawns.decrementAndGet(); plugin.getLogger().severe("Failed to persist mob respawn " + id + ": " + error.getMessage()); }
             else onMain(() -> schedule(row));
         });
     }
@@ -273,12 +299,12 @@ public final class MobManager {
             try (PreparedStatement statement = connection.prepareStatement("SELECT * FROM mob_respawns"); ResultSet result = statement.executeQuery()) {
                 while (result.next()) rows.add(new Respawn(UUID.fromString(result.getString("respawn_id")), result.getString("mob_id"),
                         result.getString("world"), result.getDouble("x"), result.getDouble("y"), result.getDouble("z"),
-                        result.getFloat("yaw"), result.getFloat("pitch"), result.getLong("due_at")));
+                        result.getFloat("yaw"), result.getFloat("pitch"), result.getLong("due_at"), result.getString("spawn_point_id")));
             }
             return rows;
         }).whenComplete((rows, error) -> {
             if (error != null) { plugin.getLogger().severe("Failed to recover mob respawns: " + error.getMessage()); return; }
-            onMain(() -> rows.forEach(this::schedule));
+            onMain(() -> { pendingRespawns.addAndGet(rows.size()); for (Respawn row : rows) { if (row.spawnPointId != null && !row.spawnPointId.isBlank()) respawnPointIds.put(row.id, row.spawnPointId); schedule(row); } });
         });
     }
 
@@ -292,9 +318,9 @@ public final class MobManager {
     private void attemptRespawn(Respawn row) {
         if (!scheduledRespawns.contains(row.id)) return;
         World world = Bukkit.getWorld(row.world);
-        if (world == null) { scheduledRespawns.remove(row.id); return; }
+        if (world == null) { releaseRespawn(row.id); return; }
         Location location = new Location(world, row.x, row.y, row.z, row.yaw, row.pitch);
-        LivingEntity entity = spawnMobDetailed(row.mobId, location, row.id, false).entity();
+        LivingEntity entity = spawnMobDetailed(row.mobId, location, row.id, false, row.spawnPointId).entity();
         if (entity == null) {
             Bukkit.getScheduler().runTaskLater(plugin, () -> attemptRespawn(row), 600L);
             return;
@@ -314,9 +340,58 @@ public final class MobManager {
             try (PreparedStatement statement = connection.prepareStatement("DELETE FROM mob_respawns WHERE respawn_id=?")) { statement.setString(1, id.toString()); statement.executeUpdate(); }
             return null;
         }).whenComplete((ignored, error) -> {
-            if (error == null) scheduledRespawns.remove(id);
-            else plugin.getLogger().severe("Failed to clear mob respawn " + id + ": " + error.getMessage());
+            if (error != null) plugin.getLogger().severe("Failed to clear mob respawn " + id + ": " + error.getMessage());
+            else if (scheduledRespawns.remove(id)) { respawnPointIds.remove(id); pendingRespawns.updateAndGet(value -> Math.max(0, value - 1)); }
         });
+    }
+
+    private void releaseRespawn(UUID id) {
+        if (scheduledRespawns.remove(id)) { respawnPointIds.remove(id); pendingRespawns.updateAndGet(value -> Math.max(0, value - 1)); }
+    }
+
+    public int countSpawnPoint(String spawnPointId) {
+        if (spawnPointId == null || spawnPointId.isBlank()) return 0;
+        int count = 0;
+        for (UUID entityId : customHealth.keySet()) {
+            Entity entity = Bukkit.getEntity(entityId);
+            if (entity instanceof LivingEntity living && !living.isDead()
+                    && spawnPointId.equals(living.getPersistentDataContainer().get(spawnPointKey, PersistentDataType.STRING))) count++;
+        }
+        return count;
+    }
+
+    public int countPendingSpawnPoint(String spawnPointId) {
+        if (spawnPointId == null || spawnPointId.isBlank()) return 0;
+        int count = 0;
+        for (String pointId : respawnPointIds.values()) if (spawnPointId.equals(pointId)) count++;
+        return count;
+    }
+
+    public void removeSpawnPointEntities(String spawnPointId) {
+        if (spawnPointId == null || spawnPointId.isBlank()) return;
+        for (UUID entityId : List.copyOf(customHealth.keySet())) {
+            Entity entity = Bukkit.getEntity(entityId);
+            if (entity != null && spawnPointId.equals(entity.getPersistentDataContainer().get(spawnPointKey, PersistentDataType.STRING))) {
+                if (entity instanceof LivingEntity living) {
+                    customHealth.remove(entityId); customMaxHealth.remove(entityId); mobZones.remove(entityId); displayNames.remove(entityId);
+                }
+                VirtualTextDisplayService.Handle handle = holograms.remove(entityId);
+                if (handle != null) plugin.getVirtualTextDisplays().remove(handle);
+                entity.remove();
+            }
+        }
+    }
+
+    public void removeSpawnPointRespawns(String spawnPointId) {
+        if (spawnPointId == null || spawnPointId.isBlank()) return;
+        for (UUID respawnId : List.copyOf(respawnPointIds.keySet())) {
+            if (!spawnPointId.equals(respawnPointIds.get(respawnId))) continue;
+            releaseRespawn(respawnId);
+        }
+        plugin.getDatabase().async(connection -> {
+            try (PreparedStatement statement = connection.prepareStatement("DELETE FROM mob_respawns WHERE spawn_point_id=?")) { statement.setString(1, spawnPointId); statement.executeUpdate(); }
+            return null;
+        }).exceptionally(error -> { plugin.getLogger().warning("Failed to clear pending respawns for point " + spawnPointId + ": " + error.getMessage()); return null; });
     }
 
     private void onMain(Runnable action) {
@@ -467,9 +542,9 @@ public final class MobManager {
         return Double.isFinite(value) && value > 0.0 ? value : fallback;
     }
 
-    private record Respawn(UUID id, String mobId, String world, double x, double y, double z, float yaw, float pitch, long dueAt) {
-        private static Respawn capture(UUID id, String mobId, Location location, long dueAt) {
-            return new Respawn(id, mobId, location.getWorld().getName(), location.getX(), location.getY(), location.getZ(), location.getYaw(), location.getPitch(), dueAt);
+    private record Respawn(UUID id, String mobId, String world, double x, double y, double z, float yaw, float pitch, long dueAt, String spawnPointId) {
+        private static Respawn capture(UUID id, String mobId, Location location, long dueAt, String spawnPointId) {
+            return new Respawn(id, mobId, location.getWorld().getName(), location.getX(), location.getY(), location.getZ(), location.getYaw(), location.getPitch(), dueAt, spawnPointId);
         }
     }
 
@@ -490,7 +565,7 @@ public final class MobManager {
         if (sound != null) location.getWorld().playSound(location, sound, 1.0f, 1.0f);
     }
 
-    public enum SpawnFailure { NONE, INVALID_LOCATION, UNKNOWN_MOB, DISABLED, WRONG_ZONE, INVALID_ENTITY_TYPE, CHUNK_LOAD_FAILED, WORLD_REJECTED }
+    public enum SpawnFailure { NONE, INVALID_LOCATION, UNKNOWN_MOB, DISABLED, WRONG_ZONE, INVALID_ENTITY_TYPE, CHUNK_LOAD_FAILED, WORLD_REJECTED, INVALID_SPAWN_POINT }
     public record SpawnResult(LivingEntity entity, SpawnFailure failure, String detail) {
         private static SpawnResult success(LivingEntity entity) { return new SpawnResult(entity, SpawnFailure.NONE, ""); }
         private static SpawnResult failed(SpawnFailure failure, String detail) { return new SpawnResult(null, failure, detail); }
