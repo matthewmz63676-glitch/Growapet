@@ -345,7 +345,7 @@ public final class TradeManager {
             for (Delivery delivery : deliveries) {
                 ItemStack item;
                 try {
-                    item = decodeDelivery(delivery);
+                    item = decodeDelivery(delivery, player.getUniqueId());
                 } catch (RuntimeException invalid) {
                     plugin.getLogger().severe("Invalid item delivery " + delivery.id + ": " + invalid.getMessage());
                     continue;
@@ -355,7 +355,7 @@ public final class TradeManager {
                     deleteDelivery(delivery.id);
                     continue;
                 }
-                plugin.getEggManager().markDelivery(item, delivery.id);
+                if (!"GROWAPET_BOOST".equals(delivery.type)) plugin.getEggManager().markDelivery(item, delivery.id);
                 Map<Integer, ItemStack> leftovers = player.getInventory().addItem(item);
                 if (!leftovers.isEmpty()) {
                     Messages.send(player, "<yellow>A pending item is waiting for inventory space.</yellow>");
@@ -551,7 +551,7 @@ public final class TradeManager {
                 && plugin.getOptionsManager().enabled(playerId, "trade_requests", true);
     }
 
-    private ItemStack decodeDelivery(Delivery delivery) {
+    private ItemStack decodeDelivery(Delivery delivery, UUID owner) {
         if ("TRADE_ITEM".equals(delivery.type)) {
             return ItemStack.deserializeBytes(Base64.getDecoder().decode(delivery.data));
         }
@@ -559,12 +559,18 @@ public final class TradeManager {
             String[] parts = delivery.data.split(":", 2);
             return plugin.getEggManager().createEgg(EntityType.valueOf(parts[0]), Integer.parseInt(parts[1]));
         }
+        if ("GROWAPET_BOOST".equals(delivery.type)) {
+            String[] parts = delivery.data.split("\\|", 4);
+            if (parts.length != 4) throw new IllegalArgumentException("Invalid boost delivery");
+            return plugin.getBoostItemManager().create(owner, parts[0], me.growapet.boosts.BoostType.valueOf(parts[1]), Double.parseDouble(parts[2]), Long.parseLong(parts[3]), delivery.id);
+        }
         throw new IllegalArgumentException("Unsupported item type " + delivery.type);
     }
 
     private boolean alreadyReceived(Player player, String deliveryId, String instanceId) {
         for (ItemStack item : player.getInventory().getContents()) {
             if (plugin.getEggManager().hasDelivery(item, deliveryId)) return true;
+            if (plugin.getBoostItemManager().hasDelivery(item, deliveryId)) return true;
             if (instanceId != null && instanceId.equals(plugin.getEggManager().getInstanceId(item))) return true;
         }
         return false;

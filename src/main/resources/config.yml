@@ -64,3 +64,7 @@ credit-milestones:
 trade:
   request-cooldown-seconds: 10
   request-expiry-seconds: 30
+
+shop-migration:
+  # Keep false until the production copy, backup, and economy report are approved.
+  maintenance-mode: false

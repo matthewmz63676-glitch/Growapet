@@ -67,6 +67,33 @@ public final class PlotBoostManager {
                 .thenRun(() -> Bukkit.getScheduler().runTask(plugin, () -> cache(boost)));
     }
 
+    /**
+     * Atomically consumes an owner-bound delivery id and creates its boost. A
+     * copied stack can therefore never activate the same paid delivery twice.
+     */
+    public CompletableFuture<Boolean> grantFromDelivery(UUID owner, String deliveryId, BoostType type,
+                                                         double bonus, long expiresAt, String source) {
+        if (owner == null || deliveryId == null || deliveryId.isBlank() || type == null
+                || !Double.isFinite(bonus) || bonus <= 0 || bonus > 9 || expiresAt <= System.currentTimeMillis())
+            return CompletableFuture.failedFuture(new IllegalArgumentException("Invalid boost delivery"));
+        String boostId = "item:" + deliveryId;
+        return plugin.getDatabase().transaction(connection -> {
+            try (PreparedStatement claim = connection.prepareStatement(
+                    "INSERT OR IGNORE INTO boost_item_claims(delivery_id,player_uuid,boost_id,activated_at) VALUES(?,?,?,?)")) {
+                claim.setString(1, deliveryId); claim.setString(2, owner.toString()); claim.setString(3, boostId); claim.setLong(4, System.currentTimeMillis());
+                if (claim.executeUpdate() != 1) return false;
+            }
+            insert(connection, new Boost(boostId, owner, type, Math.min(99, bonus), System.currentTimeMillis(), expiresAt, source));
+            return true;
+        }).thenApply(claimed -> {
+            if (Boolean.TRUE.equals(claimed)) Bukkit.getScheduler().runTask(plugin, () -> {
+                Boost boost = new Boost(boostId, owner, type, Math.min(99, bonus), System.currentTimeMillis(), expiresAt, source);
+                cache(boost);
+            });
+            return claimed;
+        });
+    }
+
     public void insert(Connection connection, String id, UUID owner, BoostType type, double bonus, Long expiresAt, String source) throws Exception {
         insert(connection, new Boost(id, owner, type, bonus, System.currentTimeMillis(), expiresAt, source));
     }

@@ -52,7 +52,10 @@ public final class PlayerManager {
         cache.put(uuid, data);
         joinedAt.put(uuid, System.currentTimeMillis());
         syncExpBar(player, data);
-        plugin.onPlayerReady(player);
+        plugin.getEntitlementService().load(uuid).whenComplete((ignored, entitlementError) -> Bukkit.getScheduler().runTask(plugin, () -> {
+            if (entitlementError != null) plugin.getLogger().warning("Could not load entitlements for " + uuid + ": " + entitlementError.getMessage());
+            if (Bukkit.getPlayer(uuid) == player && isLoaded(uuid)) plugin.onPlayerReady(player);
+        }));
     }
 
     public CompletableFuture<Void> unload(Player player) {
@@ -126,7 +129,8 @@ public final class PlayerManager {
         PlayerData data = get(player);
         if (data == null) return;
         int before = data.getLevel();
-        data.addExp(Math.round(amount * plugin.getEventManager().multiplier(me.growapet.events.EventType.DOUBLE_EXP)));
+        double linkBonus = plugin.getEntitlementService().expMultiplier(player.getUniqueId());
+        data.addExp(Math.round(amount * plugin.getEventManager().multiplier(me.growapet.events.EventType.DOUBLE_EXP) * linkBonus));
         syncExpBar(player, data);
         if (data.getLevel() > before) player.sendMessage("§a§lLEVEL UP! §7You are now level §e" + data.getLevel());
     }

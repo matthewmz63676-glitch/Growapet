@@ -81,7 +81,7 @@ public final class DailyManager {
             }
             if (won != 1) return false;
             try (PreparedStatement reward = connection.prepareStatement(
-                    "UPDATE players SET credits=MIN(9223372036854775807,credits+1) WHERE uuid=?")) {
+                    "UPDATE players SET credits=CASE WHEN credits=9223372036854775807 THEN credits ELSE credits+1 END WHERE uuid=?")) {
                 reward.setString(1, playerId.toString());
                 if (reward.executeUpdate() != 1) throw new IllegalStateException("Player row missing");
             }

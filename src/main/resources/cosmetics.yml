@@ -1,0 +1,20 @@
+enabled: true
+default-tag: ""
+tags:
+  harvest:
+    display-name: "Harvest"
+    value: "<gold>[Harvest]</gold>"
+    source: seasonal
+  discord:
+    display-name: "Discord Linked"
+    value: "<aqua>[Discord]</aqua>"
+    source: discord
+colors:
+  aqua:
+    display-name: "Aqua"
+    value: "<aqua>"
+    source: catalog
+  gold:
+    display-name: "Gold"
+    value: "<gold>"
+    source: catalog

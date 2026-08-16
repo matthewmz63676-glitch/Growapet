@@ -1,0 +1,12 @@
+enabled: false
+provider: TEBEX
+provider-plugin-name: Tebex
+secret-env: GROWAPET_TEBEX_SECRET
+api-base-url: https://plugin.tebex.io
+verification-timeout-seconds: 10
+max-quantity: 20
+max-credits-per-receipt: 1000000
+max-coins-per-receipt: 1000000000
+max-gems-per-receipt: 1000000
+paid-fulfilment-enabled: false
+sku-bundles: {}

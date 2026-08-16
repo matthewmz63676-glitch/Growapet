@@ -42,5 +42,6 @@ implements Listener {
                     () -> this.plugin.getPlayerManager().unload(event.getPlayer()));
         });
         this.plugin.getOptionsManager().unload(event.getPlayer().getUniqueId());
+        this.plugin.getEntitlementService().unload(event.getPlayer().getUniqueId());
     }
 }

@@ -40,17 +40,32 @@ public final class ReadinessDoctor {
         checkTutorial(checks);
         checkMobDefinitions(checks);
         checkResourcePack(checks);
+        checkDiscord(checks);
+        checkCommerce(checks);
+        checkSeasons(checks);
+        checkShopCatalog(checks);
 
-        CompletableFuture<Check> database = plugin.getDatabase().async(connection -> {
+        CompletableFuture<List<Check>> database = plugin.getDatabase().async(connection -> {
+            List<Check> databaseChecks = new ArrayList<>();
             try (Statement statement = connection.createStatement(); ResultSet result = statement.executeQuery("PRAGMA integrity_check")) {
                 String value = result.next() ? result.getString(1) : "no result";
-                return "ok".equalsIgnoreCase(value)
+                databaseChecks.add("ok".equalsIgnoreCase(value)
                         ? new Check("SQLite", Status.OK, "database connection and integrity check passed")
-                        : new Check("SQLite", Status.FAIL, "PRAGMA integrity_check returned '" + value + "'");
+                        : new Check("SQLite", Status.FAIL, "PRAGMA integrity_check returned '" + value + "'"));
             }
-        }).exceptionally(error -> new Check("SQLite", Status.FAIL, "read-only integrity check failed: " + rootMessage(error)));
-        return database.thenApply(dbCheck -> {
-            checks.add(dbCheck);
+            if (plugin.getConfigManager().commerce().getBoolean("enabled", false)) {
+                try (Statement statement = connection.createStatement(); ResultSet row = statement.executeQuery("SELECT (SELECT COUNT(*) FROM commerce_receipts WHERE status='VERIFIED_PENDING'),(SELECT COUNT(*) FROM commerce_debts WHERE status='OPEN')")) {
+                    if (row.next()) {
+                        int pending = row.getInt(1), debts = row.getInt(2);
+                        databaseChecks.add(pending == 0 ? new Check("Tebex pending receipts", Status.OK, "no verified receipts are waiting") : new Check("Tebex pending receipts", Status.WARN, pending + " receipt(s) await reconciliation"));
+                        databaseChecks.add(debts == 0 ? new Check("Commerce debt", Status.OK, "no open refund debt") : new Check("Commerce debt", Status.FAIL, debts + " open debt row(s) lock paid fulfilment"));
+                    }
+                }
+            }
+            return databaseChecks;
+        }).exceptionally(error -> List.of(new Check("SQLite", Status.FAIL, "read-only integrity check failed: " + rootMessage(error))));
+        return database.thenApply(dbChecks -> {
+            checks.addAll(dbChecks);
             checks.sort(Comparator.comparing(Check::name, String.CASE_INSENSITIVE_ORDER));
             return new Report(List.copyOf(checks));
         });
@@ -169,6 +184,43 @@ public final class ReadinessDoctor {
             Status status = online > 0 && loaded < online ? Status.WARN : Status.OK;
             checks.add(new Check("HUD resource pack", status, "HTTPS URL and SHA-1 are configured; " + loaded + "/" + online + " online player(s) reported a successful load"));
         }
+    }
+
+    private void checkDiscord(List<Check> checks) {
+        if (!plugin.getConfigManager().discord().getBoolean("enabled", false)) { checks.add(new Check("Discord", Status.WARN, "disabled; account linking and relay are off")); return; }
+        String guild = plugin.getConfigManager().discord().getString("guild-id", "");
+        String channel = plugin.getConfigManager().discord().getString("channel-id", "");
+        String role = plugin.getConfigManager().discord().getString("linked-role-id", "");
+        if (!guild.matches("\\d{5,32}") || !channel.matches("\\d{5,32}") || !role.matches("\\d{5,32}")) {
+            checks.add(new Check("Discord configuration", Status.FAIL, "enabled integration requires numeric guild-id, channel-id, and linked-role-id"));
+            return;
+        }
+        String env = plugin.getConfigManager().discord().getString("token-env", "GROWAPET_DISCORD_TOKEN");
+        if (System.getenv(env) == null || System.getenv(env).isBlank()) checks.add(new Check("Discord", Status.FAIL, env + " is not configured"));
+        else if (!plugin.getDiscordIntegration().isAvailable()) checks.add(new Check("Discord", Status.WARN, "token is present but the gateway is not currently connected"));
+        else checks.add(new Check("Discord", Status.OK, "gateway connected; verify privileged intents in the Discord developer portal"));
+    }
+
+    private void checkCommerce(List<Check> checks) {
+        if (!plugin.getConfigManager().commerce().getBoolean("enabled", false)) { checks.add(new Check("Tebex commerce", Status.WARN, "disabled; no paid fulfilment is possible")); return; }
+        String env = plugin.getConfigManager().commerce().getString("secret-env", "GROWAPET_TEBEX_SECRET");
+        boolean pluginPresent = plugin.getCommerceFulfilmentService().providerInstalled();
+        if (!pluginPresent) checks.add(new Check("Tebex plugin", Status.FAIL, "official Tebex plugin is missing or disabled")); else checks.add(new Check("Tebex plugin", Status.OK, "official Tebex plugin is enabled"));
+        if (System.getenv(env) == null || System.getenv(env).isBlank()) checks.add(new Check("Tebex secret", Status.FAIL, env + " is not configured")); else checks.add(new Check("Tebex secret", Status.OK, "provider secret is available from the environment"));
+        if (!plugin.getConfigManager().commerce().getBoolean("paid-fulfilment-enabled", false)) checks.add(new Check("Paid fulfilment gate", Status.WARN, "disabled until economy simulation and catalog checksum are approved"));
+    }
+
+    private void checkSeasons(List<Check> checks) {
+        if (plugin.getConfigManager().seasons() == null) { checks.add(new Check("Season definitions", Status.FAIL, "seasons.yml is unavailable")); return; }
+        List<String> invalid = plugin.getSeasonService().ids().stream().filter(id -> !plugin.getSeasonService().validate(id)).toList();
+        if (plugin.getSeasonService().ids().isEmpty()) checks.add(new Check("Season definitions", Status.WARN, "no season definitions are configured"));
+        else checks.add(invalid.isEmpty() ? new Check("Season definitions", Status.OK, plugin.getSeasonService().ids().size() + " validated definition(s)") : new Check("Season definitions", Status.FAIL, "invalid definitions: " + String.join(", ", invalid)));
+    }
+
+    private void checkShopCatalog(List<Check> checks) {
+        String active = plugin.getConfigManager().shopCatalog().getString("active-catalog", "legacy");
+        boolean known = plugin.getConfigManager().shopCatalog().isConfigurationSection("catalogs." + active);
+        checks.add(known ? new Check("Shop catalog", Status.OK, "active catalog: " + active + "; zones-v1 remains opt-in") : new Check("Shop catalog", Status.FAIL, "active catalog '" + active + "' is not defined"));
     }
 
     public record Report(List<Check> checks) {

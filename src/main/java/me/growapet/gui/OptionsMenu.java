@@ -22,6 +22,7 @@ public final class OptionsMenu extends Menu {
         fill();
         boolean actionbar=plugin.getOptionsManager().enabled(viewer.getUniqueId(),"actionbar",true);
         boolean trades=plugin.getOptionsManager().enabled(viewer.getUniqueId(),"trade_requests",true);
+        boolean relay=plugin.getOptionsManager().enabled(viewer.getUniqueId(),"discord_relay",true);
 
         setItem(4,item(Material.PLAYER_HEAD,"<aqua><bold>YOUR PREFERENCES</bold></aqua>",List.of(
                 "<gray>Choose how GrowAPet interacts with you.</gray>",
@@ -33,9 +34,13 @@ public final class OptionsMenu extends Menu {
                 "<gray>Display live GrowAPet progress</gray>",
                 "<gray>above your hotbar.</gray>")),saving?null:event->toggle("actionbar",actionbar));
 
-        setItem(24,option(Material.EMERALD,"TRADE REQUESTS",trades,List.of(
+        setItem(22,option(Material.EMERALD,"TRADE REQUESTS",trades,List.of(
                 "<gray>Allow online players to send</gray>",
                 "<gray>you new trade requests.</gray>")),saving?null:event->toggle("trade_requests",trades));
+
+        setItem(24,option(Material.PAPER,"DISCORD RELAY",relay,List.of(
+                "<gray>Allow your chat to relay</gray>",
+                "<gray>to the configured Discord channel.</gray>")),saving?null:event->toggle("discord_relay",relay));
 
         if(saving)setItem(31,item(Material.CLOCK,"<yellow><bold>SAVING CHANGES…</bold></yellow>",List.of("<gray>• Please wait a moment</gray>")),null);
         else setItem(31,item(Material.PAPER,"<aqua><bold>HOW TO USE</bold></aqua>",List.of(
@@ -60,7 +65,7 @@ public final class OptionsMenu extends Menu {
                         if(key.equals("trade_requests"))plugin.getTradeManager().onTradePreferenceChanged(viewer.getUniqueId(),current);
                         if(viewer.isOnline())Messages.send(viewer,"<red>Could not save that preference. Your previous setting was restored.</red>");
                     }else if(viewer.isOnline()){
-                        String name=key.equals("actionbar")?"Action bar":"Trade requests";
+                        String name=key.equals("actionbar")?"Action bar":key.equals("trade_requests")?"Trade requests":"Discord relay";
                         Messages.send(viewer,"<aqua><bold>OPTIONS UPDATED</bold></aqua> <dark_gray>•</dark_gray> <gray><name> → <state></gray>",Messages.value("name",name),Messages.value("state",next?"enabled":"disabled"));
                     }
                     if(isActive()&&viewer.getOpenInventory().getTopInventory()==getInventory())refresh();

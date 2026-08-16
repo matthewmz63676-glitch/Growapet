@@ -16,6 +16,7 @@
         <!-- 7.0.18 is built for Java 25; 7.0.17 is the newest Java 21 release. -->
         <worldguard.version>7.0.17</worldguard.version>
         <junit.version>5.10.2</junit.version>
+        <jda.version>6.5.0</jda.version>
     </properties>
 
     <repositories>
@@ -99,6 +100,36 @@
             <artifactId>junit-jupiter</artifactId>
             <version>${junit.version}</version>
             <scope>test</scope>
+        </dependency>
+        <!-- Embedded Discord account-linking/chat integration. Audio is intentionally not enabled. -->
+        <dependency>
+            <groupId>net.dv8tion</groupId>
+            <artifactId>JDA</artifactId>
+            <version>${jda.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.slf4j</groupId>
+                    <artifactId>slf4j-api</artifactId>
+                </exclusion>
+                <!-- GrowAPet only uses Gateway, REST, and interaction APIs. Keep voice/audio
+                     natives out of the shaded Paper plugin. -->
+                <exclusion>
+                    <groupId>club.minnced</groupId>
+                    <artifactId>opus-java</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>club.minnced</groupId>
+                    <artifactId>opus-java-api</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>club.minnced</groupId>
+                    <artifactId>opus-java-natives</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>net.java.dev.jna</groupId>
+                    <artifactId>jna</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
     </dependencies>
 

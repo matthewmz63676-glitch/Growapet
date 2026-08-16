@@ -1,0 +1,30 @@
+active-catalog: legacy
+catalogs:
+  legacy:
+    display-name: "Current GrowAPet Shops"
+    migration-source: current
+  zones-v1:
+    display-name: "GrowAPet Ten-Zone Shops"
+    enabled: false
+    order:
+      - plains
+      - spruce_forest
+      - savanna
+      - desert
+      - ice_spikes
+      - cherry_grove
+      - flower_forest
+      - cave
+      - ocean
+      - mushroom_island
+aliases:
+  forest: plains
+  plains: spruce_forest
+  mushroom: savanna
+  desert: desert
+  badlands: ice_spikes
+  snow: cherry_grove
+  deep_caves: flower_forest
+  nether: cave
+  end: ocean
+  ancient_realm: mushroom_island
