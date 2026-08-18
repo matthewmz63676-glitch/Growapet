@@ -11,16 +11,18 @@ import org.bukkit.entity.EntityType;
 import java.io.File;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
 /** Loads a complete, validated configuration snapshot before publishing it. */
 public final class ConfigManager {
-    private static final String[] FILES={"config.yml","mobs.yml","pets.yml","eggs.yml","zones.yml","quests.yml","bosses.yml","menus.yml","messages.yml","hud.yml"};
+    private static final String[] FILES={"config.yml","mobs.yml","pets.yml","eggs.yml","zones.yml","quests.yml","bosses.yml","menus.yml","messages.yml","hud.yml","tutorial.yml","discord.yml","commerce.yml","cosmetics.yml","seasons.yml","shop-catalog.yml"};
     private final GrowAPet plugin;
     private final Map<String,FileConfiguration> configs=new HashMap<>();
     private final Map<String,File> files=new HashMap<>();
@@ -80,8 +82,73 @@ public final class ConfigManager {
 
         FileConfiguration questConfig=candidate.get("quests.yml");for(String group:new String[]{"daily","weekly","story"}){ConfigurationSection root=questConfig.getConfigurationSection(group);if(root==null)continue;for(String id:root.getKeys(false)){String path=group+"."+id;String typeName=root.getString(id+".type","");QuestType type=null;try{type=QuestType.valueOf(typeName.toUpperCase(Locale.ROOT));}catch(IllegalArgumentException error){problem("quests.yml: invalid type for "+path);valid=false;}if(root.getLong(id+".amount",1)<1){problem("quests.yml: amount must be positive for "+path);valid=false;}for(String reward:new String[]{"reward-coins","reward-gems","reward-credits","reward-exp"})if(root.getLong(id+"."+reward,0)<0){problem("quests.yml: negative "+reward+" for "+path);valid=false;}if(type==QuestType.ZONE_UNLOCK&&!zoneIds.contains(root.getString(id+".zone",""))){problem("quests.yml: unknown zone for "+path);valid=false;}if(type==QuestType.BOSS_KILL&&!root.getString(id+".boss","").isBlank()&&!bossIds.contains(root.getString(id+".boss"))){problem("quests.yml: unknown boss for "+path);valid=false;}}}
 
-        FileConfiguration main=candidate.get("config.yml");double maxHit=main.getDouble("combat.max-hit-damage",1_000_000);if(!Double.isFinite(maxHit)||maxHit<=0){problem("config.yml: combat.max-hit-damage must be positive and finite");valid=false;}if(main.getLong("trade.request-cooldown-seconds",10)<1){problem("config.yml: trade request cooldown must be at least one second");valid=false;}
+        FileConfiguration main=candidate.get("config.yml");double maxHit=main.getDouble("combat.max-hit-damage",1_000_000);if(!Double.isFinite(maxHit)||maxHit<=0){problem("config.yml: combat.max-hit-damage must be positive and finite");valid=false;}if(main.getLong("trade.request-cooldown-seconds",10)<1){problem("config.yml: trade request cooldown must be at least one second");valid=false;}ConfigurationSection mobSpawns=main.getConfigurationSection("mob-spawns");if(mobSpawns!=null){if(mobSpawns.getLong("tick-period-ticks",100)<20||mobSpawns.getLong("tick-period-ticks",100)>20*60*60){problem("config.yml: mob-spawns.tick-period-ticks must be between 20 and 72000");valid=false;}if(mobSpawns.getInt("spawn-burst-per-tick",2)<1||mobSpawns.getInt("spawn-burst-per-tick",2)>10){problem("config.yml: mob-spawns.spawn-burst-per-tick must be 1-10");valid=false;}if(mobSpawns.getInt("max-tracked-mobs",5000)<1||mobSpawns.getInt("max-respawn-queue",5000)<1){problem("config.yml: mob spawn caps must be positive");valid=false;}}
+        ConfigurationSection resourcePack=candidate.get("hud.yml").getConfigurationSection("resource-pack");if(resourcePack!=null&&resourcePack.getBoolean("enabled",false)){String url=resourcePack.getString("url","");String hash=resourcePack.getString("sha1","").replace(" ","");if(!url.startsWith("https://")||!hash.matches("(?i)[0-9a-f]{40}")){problem("hud.yml: enabled resource-pack is invalid; Unicode fallback will remain active");}}
+        FileConfiguration tutorial=candidate.get("tutorial.yml");double tutorialSpeed=tutorial.getDouble("tutorial.walk-blocks-per-tick",0.19);if(!Double.isFinite(tutorialSpeed)||tutorialSpeed<0.05||tutorialSpeed>1){problem("tutorial.yml: walk-blocks-per-tick must be 0.05-1.0");valid=false;}for(String point:new String[]{"start","mob","shop","egg"})for(String axis:new String[]{"x","y","z"}){String path="tutorial.route."+point+"."+axis;double coordinate=tutorial.getDouble(path,Double.NaN);if(!tutorial.isSet(path)||!Double.isFinite(coordinate)){problem("tutorial.yml: route coordinate must be finite: "+point+"."+axis);valid=false;}}
+        FileConfiguration discord=candidate.get("discord.yml");valid=validateDiscord(discord)&&valid;
+        FileConfiguration commerce=candidate.get("commerce.yml");valid=validateCommerce(commerce)&&valid;
+        FileConfiguration seasons=candidate.get("seasons.yml");ConfigurationSection seasonRoot=seasons.getConfigurationSection("seasons");if(seasonRoot!=null)for(String id:seasonRoot.getKeys(false)){ConfigurationSection season=seasonRoot.getConfigurationSection(id);if(season==null||season.getString("definition-version","").isBlank()){problem("seasons.yml: missing definition-version for "+id);valid=false;}if(season!=null&&season.getLong("duration-days",14)<1){problem("seasons.yml: duration-days must be positive for "+id);valid=false;}}
+        valid=validateSeasons(seasons)&&valid;
+        valid=validateShopCatalog(candidate.get("shop-catalog.yml"))&&valid;
         return valid;
+    }
+
+    private boolean validateDiscord(FileConfiguration config) {
+        if (!config.getBoolean("enabled", false)) return true;
+        boolean valid = true;
+        String guild = config.getString("guild-id", ""), channel = config.getString("channel-id", "");
+        if (!guild.matches("\\d{5,32}") || !channel.matches("\\d{5,32}")) { problem("discord.yml: enabled integration requires numeric guild-id and channel-id"); valid = false; }
+        String role = config.getString("linked-role-id", "");
+        if (role.isBlank() || !role.matches("\\d{5,32}")) { problem("discord.yml: enabled integration requires a numeric linked-role-id"); valid = false; }
+        if (config.getString("token-env", "").isBlank() || config.getLong("token-expiry-seconds", 300) < 60 || config.getLong("token-expiry-seconds", 300) > 3600 || config.getInt("link-attempt-limit", 5) < 1 || config.getInt("link-attempt-limit", 5) > 32) { problem("discord.yml: token env/expiry/attempt limit is invalid"); valid = false; }
+        if (config.getInt("message-max-length", 256) < 64 || config.getInt("message-max-length", 256) > 2000 || config.getInt("messages-per-10-seconds", 4) < 1 || config.getInt("messages-per-10-seconds", 4) > 32 || config.getInt("outbound-queue-capacity", 256) < 16) { problem("discord.yml: relay limits are outside safe bounds"); valid = false; }
+        if (!valid) plugin.getLogger().warning("discord.yml is invalid; Discord remains unavailable while the core plugin continues.");
+        // Discord is an optional network integration. Its configuration must be
+        // surfaced by /growapet doctor, but it must never prevent Paper from
+        // enabling the core gameplay plugin.
+        return true;
+    }
+
+    private boolean validateCommerce(FileConfiguration config) {
+        boolean valid = true;
+        if (!"TEBEX".equalsIgnoreCase(config.getString("provider", "TEBEX"))) { problem("commerce.yml: only the TEBEX provider is supported"); valid = false; }
+        try { if (!"https".equalsIgnoreCase(URI.create(config.getString("api-base-url", "https://plugin.tebex.io")).getScheme())) { problem("commerce.yml: api-base-url must use HTTPS"); valid = false; } }
+        catch (IllegalArgumentException error) { problem("commerce.yml: api-base-url is invalid"); valid = false; }
+        if (config.getString("secret-env", "").isBlank() || config.getInt("max-quantity", 20) < 1 || config.getInt("max-quantity", 20) > 100) { problem("commerce.yml: secret env or quantity cap is invalid"); valid = false; }
+        ConfigurationSection root = config.getConfigurationSection("sku-bundles");
+        if (root != null) for (String id : root.getKeys(false)) {
+            ConfigurationSection bundle = root.getConfigurationSection(id);
+            if (!id.matches("[A-Za-z0-9._:-]{1,128}") || bundle == null || bundle.getString("version", "").isBlank()) { problem("commerce.yml: invalid SKU " + id); valid = false; continue; }
+            for (String currency : new String[]{"coins", "gems", "credits"}) if (bundle.getLong(currency, 0) < 0) { problem("commerce.yml: negative " + id + "." + currency); valid = false; }
+            for (String entitlement : bundle.getStringList("entitlements")) if (!entitlement.matches("[A-Za-z0-9._:-]{1,128}")) { problem("commerce.yml: invalid entitlement in " + id); valid = false; }
+            ConfigurationSection boosts = bundle.getConfigurationSection("boosts");
+            if (boosts != null) for (String boostId : boosts.getKeys(false)) { ConfigurationSection boost = boosts.getConfigurationSection(boostId); String type = boost == null ? "" : boost.getString("type", "").toUpperCase(Locale.ROOT); if (boost == null || !Set.of("COINS", "GEMS", "MOB_EXP", "PET_EXP", "HATCH_SPEED").contains(type) || boost.getDouble("bonus", 0) <= 0 || boost.getDouble("bonus", 0) > 9 || boost.getLong("duration-minutes", 0) < 1 || boost.getLong("duration-minutes", 0) > 1440) { problem("commerce.yml: invalid boost " + id + "." + boostId); valid = false; } }
+        }
+        return valid;
+    }
+
+    private boolean validateSeasons(FileConfiguration config) {
+        boolean valid = true; ConfigurationSection root = config.getConfigurationSection("seasons"); if (root == null) return true;
+        Set<String> objectiveTypes = Set.of("MOB_KILLS", "QUESTS_COMPLETED", "EGGS_HATCHED", "BOSS_KILLS", "ZONE_UNLOCK");
+        Set<String> rewardKinds = Set.of("COINS", "GEMS", "CREDITS", "COSMETIC_TAG", "BOOST");
+        for (String id : root.getKeys(false)) { ConfigurationSection season = root.getConfigurationSection(id); if (season == null) { valid = false; continue; }
+            if (season.getString("definition-version", "").isBlank() || season.getLong("duration-days", 14) < 1 || season.getLong("duration-days", 14) > 90) { problem("seasons.yml: invalid definition or duration for " + id); valid = false; }
+            ConfigurationSection objectives = season.getConfigurationSection("objectives"); if (objectives == null || objectives.getKeys(false).isEmpty()) { problem("seasons.yml: season has no objectives " + id); valid = false; }
+            else for (String objective : objectives.getKeys(false)) { String type = objectives.getString(objective + ".type", "").toUpperCase(Locale.ROOT); if (!objectiveTypes.contains(type) || objectives.getLong(objective + ".amount", 0) < 1) { problem("seasons.yml: invalid objective " + id + "." + objective); valid = false; } }
+            ConfigurationSection rewards = season.getConfigurationSection("rewards"); if (rewards == null || rewards.getKeys(false).isEmpty()) { problem("seasons.yml: season has no rewards " + id); valid = false; }
+            else for (String reward : rewards.getKeys(false)) { String kind = rewards.getString(reward + ".kind", "").toUpperCase(Locale.ROOT); if (!rewardKinds.contains(kind)) { problem("seasons.yml: invalid reward kind " + id + "." + reward); valid = false; } if (Set.of("COINS", "GEMS", "CREDITS").contains(kind) && rewards.getLong(reward + ".amount", 0) < 1) { problem("seasons.yml: reward amount must be positive " + id + "." + reward); valid = false; } }
+        }
+        return valid;
+    }
+
+    private boolean validateShopCatalog(FileConfiguration config) {
+        if (config == null) return false;
+        String active = config.getString("active-catalog", ""); ConfigurationSection catalogs = config.getConfigurationSection("catalogs");
+        if (catalogs == null || !catalogs.isConfigurationSection(active)) { problem("shop-catalog.yml: active catalog is missing"); return false; }
+        List<String> expected = List.of("plains", "spruce_forest", "savanna", "desert", "ice_spikes", "cherry_grove", "flower_forest", "cave", "ocean", "mushroom_island");
+        List<String> order = config.getStringList("catalogs.zones-v1.order");
+        if (order.size() != expected.size() || !order.equals(expected)) { problem("shop-catalog.yml: zones-v1 must contain the approved ten-zone order"); return false; }
+        return true;
     }
 
     private boolean validateEntity(String path,String name){try{EntityType type=EntityType.valueOf(name.toUpperCase(Locale.ROOT));if(!type.isAlive()||!type.isSpawnable()||type==EntityType.ARMOR_STAND||type==EntityType.PLAYER)throw new IllegalArgumentException();return true;}catch(IllegalArgumentException|NullPointerException error){problem(path+": invalid living entity "+name);return false;}}
@@ -89,5 +156,5 @@ public final class ConfigManager {
     private void problem(String message){plugin.getLogger().warning(message);}
 
     public void save(String name){FileConfiguration cfg=configs.get(name);File file=files.get(name);if(cfg==null||file==null)return;try{cfg.save(file);}catch(Exception error){plugin.getLogger().warning("Couldn't save "+name+": "+error.getMessage());}}
-    public FileConfiguration get(String name){return configs.get(name);}public FileConfiguration config(){return get("config.yml");}public FileConfiguration mobs(){return get("mobs.yml");}public FileConfiguration pets(){return get("pets.yml");}public FileConfiguration eggs(){return get("eggs.yml");}public FileConfiguration zones(){return get("zones.yml");}public FileConfiguration quests(){return get("quests.yml");}public FileConfiguration bosses(){return get("bosses.yml");}public FileConfiguration menus(){return get("menus.yml");}public FileConfiguration messages(){return get("messages.yml");}public FileConfiguration hud(){return get("hud.yml");}
+    public FileConfiguration get(String name){return configs.get(name);}public FileConfiguration config(){return get("config.yml");}public FileConfiguration mobs(){return get("mobs.yml");}public FileConfiguration pets(){return get("pets.yml");}public FileConfiguration eggs(){return get("eggs.yml");}public FileConfiguration zones(){return get("zones.yml");}public FileConfiguration quests(){return get("quests.yml");}public FileConfiguration bosses(){return get("bosses.yml");}public FileConfiguration menus(){return get("menus.yml");}public FileConfiguration messages(){return get("messages.yml");}public FileConfiguration hud(){return get("hud.yml");}public FileConfiguration tutorial(){return get("tutorial.yml");}public FileConfiguration discord(){return get("discord.yml");}public FileConfiguration commerce(){return get("commerce.yml");}public FileConfiguration cosmetics(){return get("cosmetics.yml");}public FileConfiguration seasons(){return get("seasons.yml");}public FileConfiguration shopCatalog(){return get("shop-catalog.yml");}
 }

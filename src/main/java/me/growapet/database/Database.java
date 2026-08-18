@@ -38,6 +38,7 @@ public final class Database {
     private final ExecutorService executor;
     private final AtomicReference<State> state = new AtomicReference<>(State.NEW);
     private volatile Connection connection;
+    private volatile Path databaseFile;
     private volatile Throwable startupFailure;
 
     public Database(GrowAPet plugin) {
@@ -56,7 +57,7 @@ public final class Database {
         return this.<Void>submitInternal(connectionIgnored -> {
             Path dataFolder = plugin.getDataFolder().toPath();
             Files.createDirectories(dataFolder);
-            Path databaseFile = dataFolder.resolve("database.db");
+            databaseFile = dataFolder.resolve("database.db");
             Class.forName("org.sqlite.JDBC");
             connection = DriverManager.getConnection("jdbc:sqlite:" + databaseFile.toAbsolutePath());
             configureConnection(connection);
@@ -157,14 +158,14 @@ public final class Database {
         }
     }
 
-    public CompletableFuture<Void> transaction(DatabaseTask<Void> task) {
+    public <T> CompletableFuture<T> transaction(DatabaseTask<T> task) {
         return async(connection -> {
             boolean autoCommit = connection.getAutoCommit();
             connection.setAutoCommit(false);
             try {
-                task.run(connection);
+                T result = task.run(connection);
                 connection.commit();
-                return null;
+                return result;
             } catch (Exception exception) {
                 connection.rollback();
                 throw exception instanceof SQLException sql ? sql : new SQLException(exception);
@@ -196,6 +197,24 @@ public final class Database {
 
     public boolean isReady() {
         return state.get() == State.READY;
+    }
+
+    /** Creates and verifies a point-in-time SQLite backup on the database worker. */
+    public CompletableFuture<Path> createVerifiedBackup(String label) {
+        if (!isReady()) return CompletableFuture.failedFuture(new IllegalStateException("Database is not ready"));
+        String safeLabel = label == null ? "manual" : label.replaceAll("[^A-Za-z0-9._-]", "_");
+        return async(connection -> {
+            if (databaseFile == null) throw new IllegalStateException("Database path is not initialized");
+            Path backupDir = databaseFile.getParent().resolve("backups");
+            Files.createDirectories(backupDir);
+            try (Statement checkpoint = connection.createStatement()) { checkpoint.execute("PRAGMA wal_checkpoint(FULL)"); }
+            Path backup = backupDir.resolve("database-" + safeLabel + "-" + BACKUP_TIME.format(Instant.now()) + "-" + System.currentTimeMillis() + ".db");
+            long expected = Files.size(databaseFile);
+            Files.copy(databaseFile, backup, StandardCopyOption.COPY_ATTRIBUTES);
+            if (!Files.isRegularFile(backup) || Files.size(backup) != expected) throw new IOException("Backup verification failed: " + backup);
+            plugin.getLogger().info("Created verified database backup: " + backup.getFileName());
+            return backup;
+        });
     }
 
     public State getState() {

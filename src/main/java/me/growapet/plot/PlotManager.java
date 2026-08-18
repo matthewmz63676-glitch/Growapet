@@ -3,6 +3,7 @@ package me.growapet.plot;
 import me.growapet.GrowAPet;
 import me.growapet.models.Plot;
 import me.growapet.models.PlayerData;
+import me.growapet.utils.LocationSafety;
 import org.bukkit.Bukkit;
 import org.bukkit.Difficulty;
 import org.bukkit.Location;
@@ -161,7 +162,9 @@ public final class PlotManager {
 
     public CompletableFuture<Boolean> teleportHome(Player player, Plot plot) {
         requireMainThread();
-        return player.teleportAsync(homeLocation(plot));
+        Location destination = LocationSafety.prepareForUse(homeLocation(plot), "plot home");
+        if (destination == null) return CompletableFuture.completedFuture(false);
+        return player.teleportAsync(destination);
     }
 
     private static boolean isSafeFeet(World world, int x, int y, int z) {

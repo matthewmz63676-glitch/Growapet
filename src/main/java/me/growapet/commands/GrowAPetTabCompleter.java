@@ -34,13 +34,17 @@ public final class GrowAPetTabCompleter implements TabCompleter {
             case"trade"->trade(sender,args);
             case"leaderboard"->leaderboards(sender,args);
             case"boss"->boss(sender,args);
-            case"options"->at(args,1,List.of("actionbar","trade"));
+            case"options"->at(args,1,List.of("actionbar","trade","discord"));
             case"visit"->at(args,1,onlinePlayers(player->sender instanceof Player viewer&&!player.getUniqueId().equals(viewer.getUniqueId())));
             case"getmob"->configured(sender,args,"growapet.admin.mob","mobs");
+            case"mobspawn"->mobSpawn(sender,args);
             case"getpet"->configured(sender,args,"growapet.admin.give","mobs");
             case"getegg"->getEgg(sender,args);
             case"shop"->at(args,1,List.of("eggs"));
             case"unlockzone"->unlockZone(sender,args);
+            case"tutorial"->tutorial(sender,args);
+            case"season"->season(sender,args);
+            case"cosmetics"->List.of();
             case"setspawn"->sender.hasPermission("growapet.admin.spawn")?List.of():List.of();
             default->List.of();
         };
@@ -48,7 +52,7 @@ public final class GrowAPetTabCompleter implements TabCompleter {
     }
 
     private List<String> admin(CommandSender sender,String[]args){
-        if(args.length==1){List<String>result=new ArrayList<>();addIf(sender,result,"growapet.admin.reload","reload");addIf(sender,result,"growapet.admin.economy","setlevel","setcoins","setgems","setcredits","creditreceipt");addIf(sender,result,"growapet.admin.give","give");addIf(sender,result,"growapet.admin.events","event");return result;}
+        if(args.length==1){List<String>result=new ArrayList<>();addIf(sender,result,"growapet.admin.reload","reload");addIf(sender,result,"growapet.admin.doctor","doctor");addIf(sender,result,"growapet.admin.economy","setlevel","setcoins","setgems","setcredits","creditreceipt","fulfil","reverse","economy-sim","commerce");addIf(sender,result,"growapet.admin.give","give");addIf(sender,result,"growapet.admin.events","event");addIf(sender,result,"growapet.admin.seasons","season");addIf(sender,result,"growapet.admin.shopmigration","shopmigration");addIf(sender,result,"growapet.admin.discord","discord");return result;}
         if(args.length<2)return List.of();String sub=args[0].toLowerCase(Locale.ROOT);
         if((sub.startsWith("set")&&sender.hasPermission("growapet.admin.economy"))||(sub.equals("give")&&sender.hasPermission("growapet.admin.give"))) {
             if(args.length==2)return onlinePlayers(player->true);
@@ -69,6 +73,21 @@ public final class GrowAPetTabCompleter implements TabCompleter {
             }).filter(value -> !value.isBlank()).toList();
             if (args.length == 4) return List.of("1","10","100");
         }
+        if((sub.equals("fulfil")||sub.equals("reverse"))&&sender.hasPermission("growapet.admin.economy")) {
+            if(args.length==2)return List.of("tebex");
+            if(args.length==3)return List.of("transaction-id");
+            if(sub.equals("fulfil")&&args.length==4)return onlinePlayers(player->true).stream().map(name->{Player player=Bukkit.getPlayerExact(name);return player==null?"":player.getUniqueId().toString();}).filter(value->!value.isBlank()).toList();
+            if(sub.equals("fulfil")&&args.length==5)return List.of("package-id");
+            if(sub.equals("fulfil")&&args.length==6)return List.of("1","2","5");
+            if(sub.equals("reverse")&&args.length==4)return List.of("package-id");
+            if(sub.equals("reverse")&&args.length==5)return onlinePlayers(player->true).stream().map(name->{Player player=Bukkit.getPlayerExact(name);return player==null?"":player.getUniqueId().toString();}).filter(value->!value.isBlank()).toList();
+            if(sub.equals("reverse")&&args.length==6)return List.of("refund","chargeback");
+        }
+        if(sub.equals("economy-sim")&&sender.hasPermission("growapet.admin.economy")){if(args.length==2)return List.of("12345","12648430");}
+        if(sub.equals("commerce")&&sender.hasPermission("growapet.admin.economy")){if(args.length==2)return List.of("status","pending","reconcile","retry","resolve-debt");if(args.length==3&&args[1].equalsIgnoreCase("status"))return List.of("transaction-id");if(args.length==3&&args[1].equalsIgnoreCase("resolve-debt"))return onlinePlayers(player->true).stream().map(name->{Player player=Bukkit.getPlayerExact(name);return player==null?"":player.getUniqueId().toString();}).filter(value->!value.isBlank()).toList();if(args.length==4&&args[1].equalsIgnoreCase("resolve-debt"))return List.of("COINS","GEMS","CREDITS","BOOST_ITEM");if(args.length==5&&args[1].equalsIgnoreCase("resolve-debt"))return List.of("audited-resolution");}
+        if(sub.equals("season")&&sender.hasPermission("growapet.admin.seasons")){if(args.length==2)return List.of("start","stop","status","validate","preview","reconcile");if(args.length==3&&List.of("start","stop","status","validate","preview","reconcile").contains(args[1].toLowerCase(Locale.ROOT)))return plugin.getSeasonService().ids();if(args.length==4&&args[1].equalsIgnoreCase("start"))return List.of("7","14","30");}
+        if(sub.equals("shopmigration")&&sender.hasPermission("growapet.admin.shopmigration")){if(args.length==2)return List.of("analyze","dryrun","apply","verify","rollback");if(args.length==3&&List.of("verify","rollback").contains(args[1].toLowerCase(Locale.ROOT)))return List.of("batch-id");if(args.length==3&&args[1].equalsIgnoreCase("apply"))return List.of("batch-id");if(args.length==4&&args[1].equalsIgnoreCase("apply"))return List.of(plugin.getShopMigrationService().catalogChecksum());}
+        if(sub.equals("discord")&&sender.hasPermission("growapet.admin.discord")){if(args.length==2)return List.of("status","panel","unlink");if(args.length==3&&args[1].equalsIgnoreCase("unlink"))return onlinePlayers(player->true);}
         return List.of();
     }
 
@@ -95,8 +114,11 @@ public final class GrowAPetTabCompleter implements TabCompleter {
     private List<String> boss(CommandSender sender,String[]args){if(args.length==1&&sender.hasPermission("growapet.admin.boss"))return List.of("spawn");if(args.length==2&&args[0].equalsIgnoreCase("spawn")&&sender.hasPermission("growapet.admin.boss"))return keys(plugin.getConfigManager().bosses().getConfigurationSection("bosses"));return List.of();}
     private List<String> leaderboards(CommandSender sender,String[]args){if(args.length==1){List<String>result=new ArrayList<>(LEADERBOARDS);if(sender.hasPermission("growapet.admin.leaderboards"))result.addAll(List.of("create","remove","movehere","refresh","reload","list"));return result;}if(!sender.hasPermission("growapet.admin.leaderboards"))return List.of();if(args.length==2&&args[0].equalsIgnoreCase("create"))return LEADERBOARDS;if(args.length==2&&(args[0].equalsIgnoreCase("remove")||args[0].equalsIgnoreCase("movehere")))return plugin.getLeaderboardManager().ids();return List.of();}
     private List<String> configured(CommandSender sender,String[]args,String permission,String root){if(!sender.hasPermission(permission))return List.of();if(args.length==1)return onlinePlayers(player->true);if(args.length==2)return keys(plugin.getConfigManager().mobs().getConfigurationSection(root));return List.of();}
+    private List<String> mobSpawn(CommandSender sender,String[]args){if(!sender.hasPermission("growapet.admin.mob"))return List.of();if(args.length==1)return List.of("set","remove","list");if(args.length==2&&args[0].equalsIgnoreCase("remove"))return plugin.getMobSpawnPointManager().points().stream().map(me.growapet.mobs.MobSpawnPointManager.MobSpawnPoint::id).toList();if(args.length==3&&args[0].equalsIgnoreCase("set"))return keys(plugin.getConfigManager().mobs().getConfigurationSection("mobs"));if(args.length==4&&args[0].equalsIgnoreCase("set"))return List.of("1","2","5","10");return List.of();}
     private List<String> getEgg(CommandSender sender,String[]args){if(!sender.hasPermission("growapet.admin.give"))return List.of();if(args.length==1)return onlinePlayers(player->true);if(args.length==2)return java.util.Arrays.stream(EntityType.values()).filter(type->type.isAlive()&&type.isSpawnable()&&type!=EntityType.PLAYER&&type!=EntityType.ARMOR_STAND).map(type->type.name().toLowerCase(Locale.ROOT)).toList();if(args.length==3)return List.of("60","300","3600");return List.of();}
     private List<String> unlockZone(CommandSender sender,String[]args){if(!sender.hasPermission("growapet.admin.zones"))return List.of();if(args.length==1)return onlinePlayers(player->true);if(args.length==2)return zoneIds();return List.of();}
+    private List<String> tutorial(CommandSender sender,String[]args){if(!sender.hasPermission("growapet.tutorial")&&!sender.hasPermission("growapet.admin.tutorial"))return List.of();if(args.length==1){List<String>values=new ArrayList<>(List.of("start","stop"));if(sender.hasPermission("growapet.admin.tutorial"))values.addAll(List.of("reset","setpoint","preview","validate"));return values;}if(args.length==2&&sender.hasPermission("growapet.admin.tutorial")&&List.of("start","stop","reset").contains(args[0].toLowerCase(Locale.ROOT)))return onlinePlayers(player->true);if(args.length==2&&sender.hasPermission("growapet.admin.tutorial")&&args[0].equalsIgnoreCase("setpoint"))return List.of("start","mob","shop","egg");return List.of();}
+    private List<String> season(CommandSender sender,String[]args){if(args.length==1){List<String> values=new ArrayList<>(plugin.getSeasonService().ids());if(sender.hasPermission("growapet.admin.seasons"))values.addAll(List.of("start","stop","status","validate","preview","reconcile"));return values;}if(sender.hasPermission("growapet.admin.seasons")&&args.length==2&&List.of("start","stop","status","validate","preview","reconcile").contains(args[0].toLowerCase(Locale.ROOT)))return plugin.getSeasonService().ids();return List.of();}
     private List<String> zoneIds(){return plugin.getZoneManager().getZonesInOrder().stream().map(zone->zone.getId()).toList();}
     private static List<String> keys(ConfigurationSection section){return section==null?List.of():List.copyOf(section.getKeys(false));}
     private static List<String> at(String[]args,int position,List<String>values){return args.length==position?values:List.of();}

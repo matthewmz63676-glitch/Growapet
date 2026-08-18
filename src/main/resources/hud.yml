@@ -10,8 +10,9 @@ icons:
   kills: "☠"
   plot: "⌂"
 
-# Native 1.21 object-component sprites. These keys must exist in the server resource pack.
-# Set enabled to false to use the Unicode fallbacks above.
+# Native 1.21 object-component sprites. The matching pack source is in resource-pack/GrowAPet-HUD.
+# Until the client confirms that the server resource pack loaded, the Unicode icons above are used.
+# Set enabled to false to always use those Unicode fallbacks.
 sprites:
   enabled: true
   atlas: "growapet:hud"
@@ -20,6 +21,16 @@ sprites:
   credit: "growapet:credit"
   damage: "growapet:damage"
   level: "growapet:level"
+
+# Optional hosted pack for the HUD sprites. Keep disabled until the ZIP is
+# served from an HTTPS URL and its exact SHA-1 is known. Unicode icons remain
+# the automatic fallback when this pack is declined or unavailable.
+resource-pack:
+  enabled: false
+  url: ""
+  sha1: ""
+  required: false
+  prompt: "<aqua><bold>GROWAPET HUD</bold></aqua> <gray>Load the optional HUD sprites for a cleaner actionbar.</gray>"
 
 actionbar:
   enabled: true

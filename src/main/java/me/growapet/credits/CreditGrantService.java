@@ -63,8 +63,8 @@ public final class CreditGrantService {
             receipt.setString(4, source == null ? "UNKNOWN" : source); receipt.setLong(5, now);
             if (receipt.executeUpdate() != 1) return false;
         }
-        try (PreparedStatement reward = connection.prepareStatement("UPDATE players SET credits=MIN(9223372036854775807,credits+?) WHERE uuid=?")) {
-            reward.setLong(1, credits); reward.setString(2, playerId.toString());
+        try (PreparedStatement reward = connection.prepareStatement("UPDATE players SET credits=CASE WHEN credits>? THEN 9223372036854775807 ELSE credits+? END WHERE uuid=?")) {
+            reward.setLong(1, Long.MAX_VALUE - credits); reward.setLong(2, credits); reward.setString(3, playerId.toString());
             if (reward.executeUpdate() != 1) throw new IllegalStateException("Player row missing");
         }
         return true;

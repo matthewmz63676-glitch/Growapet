@@ -24,6 +24,8 @@ import org.bukkit.event.block.Action;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
+import me.growapet.mobs.MobManager;
+import me.growapet.utils.Messages;
 
 public class SpawnEggListener
 implements Listener {
@@ -56,8 +58,9 @@ implements Listener {
         } else {
             spawnAt = player.getLocation();
         }
-        if (this.plugin.getMobManager().spawnMob(mobId, spawnAt) == null) {
-            player.sendMessage("\u00a7cCouldn't spawn that mob.");
+        MobManager.SpawnResult result = this.plugin.getMobManager().spawnAdminMob(mobId, spawnAt);
+        if (!result.successful()) {
+            Messages.send(player, "<red>Could not spawn that mob.</red> <gray><reason></gray>", Messages.value("reason", result.detail()));
             return;
         }
         item.setAmount(item.getAmount() - 1);

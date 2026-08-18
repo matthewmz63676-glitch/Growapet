@@ -1,0 +1,25 @@
+name: GrowAPet build
+
+on:
+  push:
+    branches: [main, "agent/**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+      - name: Test
+        run: mvn --batch-mode clean test
+      - name: Package
+        run: mvn --batch-mode package -DskipTests

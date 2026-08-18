@@ -17,7 +17,12 @@ final class Migrations {
                 new Migration(4, Migrations::tradeEscrowSchema),
                 new Migration(5, Migrations::creditProgressionSchema),
                 new Migration(6, Migrations::durableBossSchema),
-                new Migration(7, Migrations::durableMobRespawnSchema)
+                new Migration(7, Migrations::durableMobRespawnSchema),
+                new Migration(8, Migrations::tutorialProgressSchema),
+                new Migration(9, Migrations::persistentMobSpawnSchema),
+                new Migration(10, Migrations::laterIntegrationsSchema),
+                new Migration(11, Migrations::laterIntegrationsHardeningSchema),
+                new Migration(12, Migrations::discordLinkReuseSchema)
         );
     }
 
@@ -100,6 +105,77 @@ final class Migrations {
                 "CREATE TABLE IF NOT EXISTS mob_respawns (respawn_id TEXT PRIMARY KEY, mob_id TEXT NOT NULL, world TEXT NOT NULL, x REAL NOT NULL, y REAL NOT NULL, z REAL NOT NULL, yaw REAL NOT NULL DEFAULT 0, pitch REAL NOT NULL DEFAULT 0, due_at INTEGER NOT NULL)",
                 "CREATE INDEX IF NOT EXISTS idx_mob_respawns_due ON mob_respawns(due_at)"
         );
+    }
+
+    private static void tutorialProgressSchema(Connection connection) throws SQLException {
+        execute(connection,
+                "CREATE TABLE IF NOT EXISTS tutorial_progress (player_uuid TEXT PRIMARY KEY, stage TEXT NOT NULL DEFAULT 'MOB', updated_at INTEGER NOT NULL)",
+                "CREATE INDEX IF NOT EXISTS idx_tutorial_stage ON tutorial_progress(stage)"
+        );
+    }
+
+    private static void persistentMobSpawnSchema(Connection connection) throws SQLException {
+        execute(connection,
+                "CREATE TABLE IF NOT EXISTS mob_spawn_points (spawn_id TEXT PRIMARY KEY, mob_id TEXT NOT NULL, world TEXT NOT NULL, x REAL NOT NULL, y REAL NOT NULL, z REAL NOT NULL, yaw REAL NOT NULL DEFAULT 0, pitch REAL NOT NULL DEFAULT 0, zone_id TEXT NOT NULL DEFAULT '', max_count INTEGER NOT NULL DEFAULT 1, enabled INTEGER NOT NULL DEFAULT 1, created_at INTEGER NOT NULL)",
+                "CREATE INDEX IF NOT EXISTS idx_mob_spawn_points_zone ON mob_spawn_points(zone_id)");
+        addColumn(connection, "mob_respawns", "spawn_point_id", "TEXT");
+        execute(connection, "CREATE INDEX IF NOT EXISTS idx_mob_respawns_spawn_point ON mob_respawns(spawn_point_id)");
+    }
+
+    /** Durable boundaries for the later Discord, commerce, seasonal, and shop-migration systems. */
+    private static void laterIntegrationsSchema(Connection connection) throws SQLException {
+        execute(connection,
+                "CREATE TABLE IF NOT EXISTS discord_links (player_uuid TEXT PRIMARY KEY, discord_id TEXT NOT NULL UNIQUE, discord_name TEXT NOT NULL DEFAULT '', linked_at INTEGER NOT NULL, unlinked_at INTEGER)",
+                "CREATE TABLE IF NOT EXISTS discord_link_tokens (token_hash TEXT PRIMARY KEY, player_uuid TEXT NOT NULL, expires_at INTEGER NOT NULL, attempts INTEGER NOT NULL DEFAULT 0, consumed_at INTEGER, created_at INTEGER NOT NULL)",
+                "CREATE INDEX IF NOT EXISTS idx_discord_tokens_player ON discord_link_tokens(player_uuid,expires_at)",
+                "CREATE TABLE IF NOT EXISTS reward_receipts (receipt_id TEXT PRIMARY KEY, origin TEXT NOT NULL, player_uuid TEXT NOT NULL, bundle_version TEXT NOT NULL, status TEXT NOT NULL, created_at INTEGER NOT NULL, reversed_at INTEGER)",
+                "CREATE TABLE IF NOT EXISTS player_entitlements (player_uuid TEXT NOT NULL, entitlement_id TEXT NOT NULL, kind TEXT NOT NULL, value TEXT NOT NULL, active INTEGER NOT NULL DEFAULT 1, created_at INTEGER NOT NULL, PRIMARY KEY(player_uuid,entitlement_id))",
+                "CREATE TABLE IF NOT EXISTS entitlement_sources (receipt_id TEXT NOT NULL, player_uuid TEXT NOT NULL, entitlement_id TEXT NOT NULL, kind TEXT NOT NULL, value TEXT NOT NULL, created_at INTEGER NOT NULL, revoked_at INTEGER, PRIMARY KEY(receipt_id,entitlement_id))",
+                "CREATE INDEX IF NOT EXISTS idx_entitlements_player ON player_entitlements(player_uuid,active)",
+                "CREATE TABLE IF NOT EXISTS commerce_receipts (receipt_id TEXT PRIMARY KEY, provider TEXT NOT NULL, transaction_id TEXT NOT NULL, package_id TEXT NOT NULL, player_uuid TEXT NOT NULL, quantity INTEGER NOT NULL, status TEXT NOT NULL, verified_at INTEGER NOT NULL, reversed_at INTEGER)",
+                "CREATE UNIQUE INDEX IF NOT EXISTS idx_commerce_transaction_package ON commerce_receipts(provider,transaction_id,package_id)",
+                "CREATE TABLE IF NOT EXISTS commerce_receipt_items (receipt_id TEXT NOT NULL, item_index INTEGER NOT NULL, kind TEXT NOT NULL, amount INTEGER NOT NULL DEFAULT 0, value TEXT NOT NULL DEFAULT '', PRIMARY KEY(receipt_id,item_index))",
+                "CREATE TABLE IF NOT EXISTS commerce_reversals (receipt_id TEXT NOT NULL, reason TEXT NOT NULL, provider_status TEXT NOT NULL, created_at INTEGER NOT NULL, PRIMARY KEY(receipt_id,reason))",
+                "CREATE TABLE IF NOT EXISTS commerce_debts (player_uuid TEXT NOT NULL, asset_kind TEXT NOT NULL, amount INTEGER NOT NULL, source_receipt TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'OPEN', created_at INTEGER NOT NULL, resolved_at INTEGER, PRIMARY KEY(player_uuid,asset_kind,source_receipt))",
+                "CREATE INDEX IF NOT EXISTS idx_commerce_debts_player ON commerce_debts(player_uuid,status)",
+                "CREATE TABLE IF NOT EXISTS season_state (season_id TEXT PRIMARY KEY, definition_version TEXT NOT NULL, starts_at INTEGER NOT NULL, ends_at INTEGER NOT NULL, state TEXT NOT NULL, checksum TEXT NOT NULL, updated_at INTEGER NOT NULL)",
+                "CREATE TABLE IF NOT EXISTS season_progress (season_id TEXT NOT NULL, player_uuid TEXT NOT NULL, objective_id TEXT NOT NULL, progress INTEGER NOT NULL DEFAULT 0, updated_at INTEGER NOT NULL, PRIMARY KEY(season_id,player_uuid,objective_id))",
+                "CREATE TABLE IF NOT EXISTS season_claims (season_id TEXT NOT NULL, player_uuid TEXT NOT NULL, reward_id TEXT NOT NULL, claimed_at INTEGER NOT NULL, PRIMARY KEY(season_id,player_uuid,reward_id))",
+                "CREATE INDEX IF NOT EXISTS idx_season_progress_player ON season_progress(player_uuid,season_id)",
+                "CREATE TABLE IF NOT EXISTS shop_catalog_versions (catalog_id TEXT PRIMARY KEY, checksum TEXT NOT NULL, active INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL)",
+                "CREATE TABLE IF NOT EXISTS zone_aliases (catalog_id TEXT NOT NULL, legacy_id TEXT NOT NULL, current_id TEXT NOT NULL, created_at INTEGER NOT NULL, PRIMARY KEY(catalog_id,legacy_id))",
+                "CREATE TABLE IF NOT EXISTS shop_purchases (catalog_id TEXT NOT NULL, player_uuid TEXT NOT NULL, zone_id TEXT NOT NULL, chain_id TEXT NOT NULL, tier_id TEXT NOT NULL, source TEXT NOT NULL, purchased_at INTEGER NOT NULL, PRIMARY KEY(catalog_id,player_uuid,zone_id,chain_id,tier_id))",
+                "CREATE TABLE IF NOT EXISTS shop_migration_batches (batch_id TEXT PRIMARY KEY, from_catalog TEXT NOT NULL, to_catalog TEXT NOT NULL, checksum TEXT NOT NULL, state TEXT NOT NULL, created_at INTEGER NOT NULL, applied_at INTEGER, rolled_back_at INTEGER)",
+                "CREATE TABLE IF NOT EXISTS shop_migration_entries (batch_id TEXT NOT NULL, player_uuid TEXT NOT NULL, legacy_data TEXT NOT NULL, generated_data TEXT NOT NULL, coin_remainder INTEGER NOT NULL DEFAULT 0, gem_remainder INTEGER NOT NULL DEFAULT 0, state TEXT NOT NULL, PRIMARY KEY(batch_id,player_uuid))",
+                "CREATE INDEX IF NOT EXISTS idx_shop_purchases_player ON shop_purchases(player_uuid,catalog_id)",
+                "CREATE INDEX IF NOT EXISTS idx_shop_migration_entries_state ON shop_migration_entries(batch_id,state)"
+        );
+    }
+
+    /** Idempotency records for reversals and owner-bound consumables added after v10 shipped. */
+    private static void laterIntegrationsHardeningSchema(Connection connection) throws SQLException {
+        execute(connection,
+                "CREATE TABLE IF NOT EXISTS reward_reversals (receipt_id TEXT PRIMARY KEY, reason TEXT NOT NULL, created_at INTEGER NOT NULL)",
+                "CREATE TABLE IF NOT EXISTS boost_item_claims (delivery_id TEXT PRIMARY KEY, player_uuid TEXT NOT NULL, boost_id TEXT NOT NULL, activated_at INTEGER NOT NULL)",
+                "CREATE INDEX IF NOT EXISTS idx_boost_item_claims_player ON boost_item_claims(player_uuid)",
+                "CREATE INDEX IF NOT EXISTS idx_reward_receipts_player ON reward_receipts(player_uuid,created_at)");
+        addColumn(connection, "event_state", "definition_version", "TEXT NOT NULL DEFAULT '1'");
+        addColumn(connection, "event_state", "definition_checksum", "TEXT NOT NULL DEFAULT ''");
+        addColumn(connection, "event_state", "stacking_policy", "TEXT NOT NULL DEFAULT 'HIGHEST'");
+        addColumn(connection, "event_state", "lifecycle_state", "TEXT NOT NULL DEFAULT 'ACTIVE'");
+        addColumn(connection, "event_state", "updated_at", "INTEGER NOT NULL DEFAULT 0");
+    }
+
+    /**
+     * The v10 table retained a table-wide UNIQUE constraint on discord_id. Keep
+     * historical links for audit, but move inactive IDs to an archival value so
+     * a player can safely link that Discord account again after /unlink.
+     */
+    private static void discordLinkReuseSchema(Connection connection) throws SQLException {
+        addColumn(connection, "discord_links", "unlinked_discord_id", "TEXT");
+        try (Statement statement = connection.createStatement()) {
+            statement.executeUpdate("UPDATE discord_links SET unlinked_discord_id=discord_id,discord_id='unlinked:'||player_uuid||':'||unlinked_at WHERE unlinked_at IS NOT NULL AND unlinked_discord_id IS NULL");
+        }
     }
 
     private static void execute(Connection connection, String... statements) throws SQLException {

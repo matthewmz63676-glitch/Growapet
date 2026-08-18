@@ -6,6 +6,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
 import me.growapet.utils.Messages;
+import me.growapet.rewards.RewardBundle;
 
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -52,16 +53,32 @@ public final class QuestManager {
     public CompletableFuture<Boolean> claim(Player player,String requested){
         QuestDefinition definition=find(requested);if(definition==null){Messages.send(player,"<red>Unknown quest.</red>");return CompletableFuture.completedFuture(false);}
         UUID playerId=player.getUniqueId();String period=period(definition);Progress current=current(playerId,definition);if(current.claimed||current.value<definition.amount()){Messages.send(player,"<red>That quest is not ready to claim.</red>");return CompletableFuture.completedFuture(false);}
-        PlayerData data=plugin.getPlayerManager().get(playerId);if(data==null||!data.tryLockEconomy()){Messages.send(player,"<red>Another transaction is already in progress.</red>");return CompletableFuture.completedFuture(false);}
+        PlayerData data=plugin.getPlayerManager().get(playerId);if(data==null){Messages.send(player,"<red>Your profile is still loading.</red>");return CompletableFuture.completedFuture(false);}
         CompletableFuture<Boolean> result=new CompletableFuture<>();
-        CompletableFuture<Void> transaction=plugin.getDatabase().transaction(connection->{boolean won;try(PreparedStatement claim=connection.prepareStatement("UPDATE quest_progress SET claimed=1 WHERE player_uuid=? AND quest_key=? AND period_key=? AND claimed=0 AND progress>=?")){claim.setString(1,playerId.toString());claim.setString(2,definition.key());claim.setString(3,period);claim.setLong(4,definition.amount());won=claim.executeUpdate()==1;}if(!won)throw new IllegalStateException("Already claimed");try(PreparedStatement reward=connection.prepareStatement("UPDATE players SET coins=MIN(9223372036854775807,coins+?),gems=MIN(9223372036854775807,gems+?),credits=MIN(9223372036854775807,credits+?),quests_completed=MIN(9223372036854775807,quests_completed+1),exp=MIN(9223372036854775807,exp+ROUND(?*exp_multiplier)) WHERE uuid=?")){reward.setLong(1,definition.coins());reward.setLong(2,definition.gems());reward.setLong(3,definition.credits());reward.setLong(4,definition.exp());reward.setString(5,playerId.toString());if(reward.executeUpdate()!=1)throw new IllegalStateException("Player missing");}return null;});
+        double linkBonus = plugin.getEntitlementService().expMultiplier(playerId);
+        long effectiveExp = definition.exp() <= 0 ? 0 : Math.min(Long.MAX_VALUE, Math.round(definition.exp() * linkBonus * data.getExpMultiplier()));
+        RewardBundle bundle = RewardBundle.currency(definition.coins(), definition.gems(), definition.credits());
+        CompletableFuture<Boolean> transaction = plugin.getRewardFulfilmentService().fulfilGuarded(
+                "quest:" + definition.key() + ":" + period + ":" + playerId,
+                "QUEST:" + definition.key(), playerId, bundle, connection -> {
+                    try (PreparedStatement claim=connection.prepareStatement("UPDATE quest_progress SET claimed=1 WHERE player_uuid=? AND quest_key=? AND period_key=? AND claimed=0 AND progress>=?")) {
+                        claim.setString(1,playerId.toString()); claim.setString(2,definition.key()); claim.setString(3,period); claim.setLong(4,definition.amount());
+                        if (claim.executeUpdate() != 1) return false;
+                    }
+                    try (PreparedStatement reward=connection.prepareStatement("UPDATE players SET quests_completed=CASE WHEN quests_completed>? THEN 9223372036854775807 ELSE quests_completed+1 END,exp=CASE WHEN exp>? THEN 9223372036854775807 ELSE exp+? END WHERE uuid=?")) {
+                        reward.setLong(1, Long.MAX_VALUE - 1); reward.setLong(2, Long.MAX_VALUE - effectiveExp); reward.setLong(3, effectiveExp); reward.setString(4,playerId.toString());
+                        if (reward.executeUpdate() != 1) throw new IllegalStateException("Player missing");
+                    }
+                    return true;
+                });
         pendingClaims.put(playerId,result);
         transaction.whenComplete((ignored,error)->Bukkit.getScheduler().runTask(plugin,()->{
             try{
-                data.unlockEconomy();
                 if(error!=null){if(player.isOnline())Messages.send(player,"<red>That claim could not be completed. No reward was issued.</red>");result.complete(false);return;}
+                if (!Boolean.TRUE.equals(ignored)) { result.complete(false); return; }
                 progress.computeIfAbsent(playerId,key->new ConcurrentHashMap<>()).put(definition.key()+"@"+period,new Progress(current.value,true));
-                if(plugin.getPlayerManager().get(playerId)==data){data.addCoinsRaw(definition.coins());data.addGemsRaw(definition.gems());data.addCredits(definition.credits());data.addExp(definition.exp());data.incrementQuestsCompleted();plugin.getCreditMilestoneManager().evaluate(playerId);if(player.isOnline())plugin.getPlayerManager().syncExpBar(player,data);}
+                if(plugin.getPlayerManager().get(playerId)==data){data.addExp(Math.min(Long.MAX_VALUE, Math.round(definition.exp() * linkBonus)));data.incrementQuestsCompleted();plugin.getCreditMilestoneManager().evaluate(playerId);if(player.isOnline())plugin.getPlayerManager().syncExpBar(player,data);}
+                plugin.getSeasonService().record(playerId, "QUESTS_COMPLETED", 1);
                 if(player.isOnline())Messages.send(player,"<aqua><bold>QUEST COMPLETE</bold></aqua> <dark_gray>•</dark_gray> <gray><quest> → reward claimed</gray>",Messages.value("quest",definition.name()));
                 result.complete(true);
             }finally{pendingClaims.remove(playerId,result);}

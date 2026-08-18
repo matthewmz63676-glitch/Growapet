@@ -6,12 +6,12 @@ description: A pet progression plugin featuring mob zones, pet collection, rebir
 api-version: 1.21
 
 depend: [packetevents, WorldGuard]
-soft-depend: [PlaceholderAPI, LuckPerms]
+soft-depend: [PlaceholderAPI, LuckPerms, Tebex]
 
 commands:
   growapet:
     description: GrowAPet admin command
-    usage: /growapet <reload|give|setlevel|setcoins|setgems|setcredits|event|creditreceipt>
+    usage: /growapet <doctor|reload|give|setlevel|setcoins|setgems|setcredits|event|creditreceipt|economy-sim|commerce|season|shopmigration|discord>
   plot:
     description: Manage your plot
     usage: /plot [home|settings]
@@ -49,6 +49,9 @@ commands:
   getmob:
     description: Get a mob spawn item (admin)
     usage: /getmob <player> <mob_name>
+  mobspawn:
+    description: Manage persistent GrowAPet mob population points (admin)
+    usage: /mobspawn <set|remove|list> [id] [mob] [max]
   getegg:
     description: Get an egg item (admin)
     usage: /getegg <player> <entityType> [incubateSeconds]
@@ -76,6 +79,24 @@ commands:
   daily:
     description: Claim the free 24-hour Credit reward
     usage: /daily
+  tutorial:
+    description: Start or manage the GrowAPet onboarding tutorial
+    usage: /tutorial [start|stop] or /tutorial <start|stop|reset|setpoint|preview|validate> ...
+  link:
+    description: Generate a Discord account link code
+    usage: /link
+  checklink:
+    description: Check Discord account link status
+    usage: /checklink
+  unlink:
+    description: Remove your Discord account link
+    usage: /unlink
+  season:
+    description: Open the active seasonal journal
+    usage: /season [seasonId]
+  cosmetics:
+    description: Select owned chat cosmetics
+    usage: /cosmetics
 
 permissions:
   growapet.admin:
@@ -83,6 +104,7 @@ permissions:
     default: op
     children:
       growapet.admin.reload: true
+      growapet.admin.doctor: true
       growapet.admin.economy: true
       growapet.admin.give: true
       growapet.admin.mob: true
@@ -92,7 +114,16 @@ permissions:
       growapet.admin.events: true
       growapet.admin.bypass: true
       growapet.admin.leaderboards: true
+      growapet.command-blacklist.bypass: true
+      growapet.admin.tutorial: true
+      growapet.tutorial: true
+      growapet.admin.seasons: true
+      growapet.admin.shopmigration: true
+      growapet.admin.discord: true
   growapet.admin.reload: { default: op }
+  growapet.admin.doctor:
+    description: Run read-only GrowAPet readiness diagnostics
+    default: op
   growapet.admin.economy: { default: op }
   growapet.admin.give: { default: op }
   growapet.admin.mob: { default: op }
@@ -102,9 +133,27 @@ permissions:
   growapet.admin.events: { default: op }
   growapet.admin.bypass: { default: op }
   growapet.admin.leaderboards: { default: op }
+  growapet.command-blacklist.bypass:
+    description: Bypass GrowAPet's player command blacklist
+    default: op
+  growapet.admin.tutorial:
+    description: Start, stop, or reset another player's tutorial
+    default: op
+  growapet.admin.seasons: { default: op }
+  growapet.admin.shopmigration: { default: op }
+  growapet.admin.discord: { default: op }
+  growapet.tutorial:
+    description: Use the GrowAPet tutorial
+    default: true
   growapet.chat.color:
     description: Use & colour codes and #RRGGBB hex codes in chat
     default: op
   growapet.autokill:
     description: Use /autokill on tracked GrowAPet mobs
     default: op
+  growapet.discord.link:
+    description: Link or inspect your Discord account
+    default: true
+  growapet.cosmetics:
+    description: Open the GrowAPet cosmetics selector
+    default: true

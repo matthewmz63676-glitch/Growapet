@@ -22,8 +22,9 @@ import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.configuration.ConfigurationSection;
-import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
+import me.growapet.mobs.MobManager;
+import me.growapet.utils.Messages;
 
 public class GetMobCommand
 implements CommandExecutor,
@@ -48,12 +49,14 @@ TabCompleter {
             sender.sendMessage("\u00a7cPlayer not found (must be online).");
             return true;
         }
-        LivingEntity mob = this.plugin.getMobManager().spawnMob(args[1], target.getLocation());
-        if (mob == null) {
-            sender.sendMessage("\u00a7cUnknown mob: " + args[1]);
+        MobManager.SpawnResult result = this.plugin.getMobManager().spawnAdminMob(args[1], target.getLocation());
+        if (!result.successful()) {
+            Messages.send(sender, "<red>Could not spawn <white><mob></white>.</red> <gray><reason></gray>",
+                    Messages.value("mob", args[1]), Messages.value("reason", result.detail()));
             return true;
         }
-        sender.sendMessage("\u00a7aSpawned \u00a7e" + args[1] + " \u00a7aat " + target.getName() + "'s location.");
+        Messages.send(sender, "<green>Spawned <yellow><mob></yellow> at <white><player></white>'s location.</green>",
+                Messages.value("mob", args[1]), Messages.value("player", target.getName()));
         return true;
     }
 

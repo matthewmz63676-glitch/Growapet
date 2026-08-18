@@ -1,0 +1,38 @@
+timezone: America/New_York
+seasons:
+  harvest_festival:
+    enabled: false
+    definition-version: "1"
+    display-name: "Harvest Festival"
+    duration-days: 14
+    objectives:
+      mobs:
+        type: MOB_KILLS
+        amount: 250
+      quests:
+        type: QUESTS_COMPLETED
+        amount: 3
+      eggs:
+        type: EGGS_HATCHED
+        amount: 5
+      bosses:
+        type: BOSS_KILLS
+        amount: 1
+    rewards:
+      harvest_tag:
+        kind: COSMETIC_TAG
+        value: harvest
+      coins:
+        kind: COINS
+        amount: 2500
+      gems:
+        kind: GEMS
+        amount: 25
+      credits:
+        kind: CREDITS
+        amount: 5
+      exp_boost:
+        kind: BOOST
+        boost-type: MOB_EXP
+        bonus: 0.25
+        duration-minutes: 30

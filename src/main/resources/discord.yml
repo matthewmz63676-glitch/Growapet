@@ -1,0 +1,16 @@
+enabled: false
+token-env: GROWAPET_DISCORD_TOKEN
+guild-id: ""
+channel-id: ""
+linked-role-id: ""
+log-channel-id: ""
+token-expiry-seconds: 300
+link-attempt-limit: 5
+message-max-length: 256
+outbound-queue-capacity: 256
+messages-per-10-seconds: 4
+require-linked-for-minecraft-chat: true
+relay:
+  minecraft-to-discord: true
+  discord-to-minecraft: true
+  invite-url: ""

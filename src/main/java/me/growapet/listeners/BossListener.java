@@ -109,12 +109,19 @@ public final class BossListener implements Listener {
             }
             for (int index = 0; index < ranked.size(); index++) {
                 try (PreparedStatement payout = connection.prepareStatement(
-                        "UPDATE players SET coins=MIN(9223372036854775807,coins+?),gems=MIN(9223372036854775807,gems+?),credits=MIN(9223372036854775807,credits+?)," +
-                                "boss_kills=MIN(9223372036854775807,boss_kills+1),boss_damage=MIN(1.7976931348623157e308,boss_damage+?)," +
-                                "exp=MIN(9223372036854775807,exp+ROUND(?*exp_multiplier)) WHERE uuid=?")) {
-                    payout.setLong(1, reward.coins); payout.setLong(2, reward.gems); payout.setLong(3, reward.credits(index));
-                    payout.setDouble(4, ranked.get(index).getValue()); payout.setLong(5, eventExp);
-                    payout.setString(6, ranked.get(index).getKey().toString());
+                        "UPDATE players SET coins=CASE WHEN coins>? THEN 9223372036854775807 ELSE coins+? END,gems=CASE WHEN gems>? THEN 9223372036854775807 ELSE gems+? END,credits=CASE WHEN credits>? THEN 9223372036854775807 ELSE credits+? END," +
+                                "boss_kills=CASE WHEN boss_kills=9223372036854775807 THEN boss_kills ELSE boss_kills+1 END,boss_damage=CASE WHEN boss_damage>? THEN 1.7976931348623157e308 ELSE boss_damage+? END," +
+                                "exp=CASE WHEN exp>? THEN 9223372036854775807 ELSE exp+? END WHERE uuid=?")) {
+                    long coins = Math.max(0, reward.coins), gems = Math.max(0, reward.gems), credits = Math.max(0, reward.credits(index));
+                    payout.setLong(1, Long.MAX_VALUE - coins); payout.setLong(2, coins);
+                    payout.setLong(3, Long.MAX_VALUE - gems); payout.setLong(4, gems);
+                    payout.setLong(5, Long.MAX_VALUE - credits); payout.setLong(6, credits);
+                    double effectiveExp = eventExp * plugin.getEntitlementService().expMultiplier(ranked.get(index).getKey());
+                    double damage = Math.max(0, ranked.get(index).getValue());
+                    payout.setDouble(7, Double.MAX_VALUE - damage); payout.setDouble(8, damage);
+                    long exp = Math.min(Long.MAX_VALUE, Math.max(0, Math.round(effectiveExp)));
+                    payout.setLong(9, Long.MAX_VALUE - exp); payout.setLong(10, exp);
+                    payout.setString(11, ranked.get(index).getKey().toString());
                     if (payout.executeUpdate() != 1) throw new IllegalStateException("Missing boss participant");
                 }
             }
@@ -129,12 +136,13 @@ public final class BossListener implements Listener {
                     PlayerData data = plugin.getPlayerManager().get(id);
                     if (data != null) {
                         data.addCoinsRaw(reward.coins); data.addGemsRaw(reward.gems); data.addCredits(reward.credits(index));
-                        data.incrementBossKills(); data.addBossDamage(ranked.get(index).getValue()); data.addExp(eventExp);
+                        data.incrementBossKills(); data.addBossDamage(ranked.get(index).getValue()); data.addExp(Math.min(Long.MAX_VALUE, Math.round(eventExp * plugin.getEntitlementService().expMultiplier(id))));
                         Player online = Bukkit.getPlayer(id);
                         if (online != null) plugin.getPlayerManager().syncExpBar(online, data);
                         plugin.getCreditMilestoneManager().evaluate(id);
                     }
                     plugin.getQuestManager().record(id, QuestType.BOSS_KILL, 1, bossId);
+                    plugin.getSeasonService().record(id, "BOSS_KILLS", 1);
                     Player online = Bukkit.getPlayer(id);
                     if (online != null) Messages.send(online,
                             "<gold><bold>BOSS DEFEATED</bold></gold> <dark_gray>•</dark_gray> <gray>Placement <yellow>#<rank></yellow> → <light_purple><credits> Credits</light_purple></gray>",

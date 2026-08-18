@@ -25,6 +25,7 @@ import java.util.HashSet;
 import java.util.Set;
 import me.growapet.GrowAPet;
 import me.growapet.models.PlayerData;
+import me.growapet.utils.LocationSafety;
 import me.growapet.zones.WallRegion;
 import me.growapet.zones.Zone;
 import org.bukkit.Bukkit;
@@ -37,6 +38,7 @@ public class ZoneManager {
     private final GrowAPet plugin;
     private final Map<String, Zone> zones = new LinkedHashMap<String, Zone>();
     private final Set<String> invalidRegions = new HashSet<>();
+    private final Map<String, String> regionProblems = new LinkedHashMap<>();
 
     public ZoneManager(GrowAPet plugin) {
         this.plugin = plugin;
@@ -46,6 +48,7 @@ public class ZoneManager {
     public void load() {
         this.zones.clear();
         this.invalidRegions.clear();
+        this.regionProblems.clear();
         ConfigurationSection root = this.plugin.getConfigManager().zones().getConfigurationSection("zones");
         if (root == null) {
             return;
@@ -81,6 +84,15 @@ public class ZoneManager {
 
     public Zone getZone(String id) {
         return this.zones.get(id);
+    }
+
+    /** Returns a stable snapshot of configuration/WorldGuard problems for diagnostics. */
+    public Map<String, String> validationProblems() {
+        return Map.copyOf(regionProblems);
+    }
+
+    public boolean isRegionUsable(String zoneId) {
+        return zoneId != null && zones.containsKey(zoneId) && !invalidRegions.contains(zoneId);
     }
 
     public Zone getZoneAt(Location location) {
@@ -129,14 +141,18 @@ public class ZoneManager {
     private void validateRegion(Zone zone) {
         if (zone.getWarp().getWorld() == null) {
             invalidRegions.add(zone.getId());
-            plugin.getLogger().severe("Zone '" + zone.getId() + "' references an unloaded world.");
+            String message = "Zone '" + zone.getId() + "' references an unloaded world.";
+            regionProblems.put(zone.getId(), message);
+            plugin.getLogger().severe(message);
             return;
         }
         RegionManager manager = WorldGuard.getInstance().getPlatform().getRegionContainer().get(BukkitAdapter.adapt(zone.getWarp().getWorld()));
         ProtectedRegion region = manager == null ? null : manager.getRegion(zone.getRegionId());
         if (!(region instanceof ProtectedCuboidRegion)) {
             invalidRegions.add(zone.getId());
-            plugin.getLogger().severe("Zone '" + zone.getId() + "' requires cuboid WorldGuard region '" + zone.getRegionId() + "'. Zone-bound features are disabled for it.");
+            String message = "Zone '" + zone.getId() + "' requires cuboid WorldGuard region '" + zone.getRegionId() + "'. Zone-bound features are disabled for it.";
+            regionProblems.put(zone.getId(), message);
+            plugin.getLogger().severe(message);
         }
     }
 
@@ -213,7 +229,7 @@ public class ZoneManager {
 
     public boolean teleport(Player player, String zoneId) {
         Zone zone = this.zones.get(zoneId);
-        if (zone == null || zone.getWarp().getWorld() == null) {
+        if (zone == null) {
             player.sendMessage("\u00a7cThat zone's warp location isn't configured yet.");
             return false;
         }
@@ -221,7 +237,12 @@ public class ZoneManager {
             player.sendMessage("§cYou have not unlocked that zone.");
             return false;
         }
-        player.teleportAsync(zone.getWarp()).thenAccept(success -> {
+        Location destination = LocationSafety.prepareForUse(zone.getWarp(), "Zone '" + zone.getId() + "' warp");
+        if (destination == null) {
+            player.sendMessage("\u00a7cThat zone's warp is unavailable or unsafe. An admin must fix it before players can travel there.");
+            return false;
+        }
+        player.teleportAsync(destination).thenAccept(success -> {
             if(success)me.growapet.utils.Messages.send(player,"<green>Warped to <yellow><zone></yellow>.</green>",me.growapet.utils.Messages.value("zone",zone.getDisplayName()));
             else me.growapet.utils.Messages.send(player,"<red>That warp could not be completed safely.</red>");
         });
