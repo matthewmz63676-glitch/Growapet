@@ -61,8 +61,8 @@ implements Listener {
             return;
         }
         Location target = placeAt.getLocation();
-        if (!this.plugin.getPlotManager().isWithinOwnPlot(player.getUniqueId(), target)) {
-            player.sendMessage("\u00a7cYou can only place eggs inside your own plot!");
+        if (!this.plugin.getPlotManager().isPlotRegion(target)) {
+            player.sendMessage("\u00a7cYou can only place eggs inside the plot!");
             return;
         }
         Plot plot = this.plugin.getPlotManager().getPlot(player.getUniqueId());

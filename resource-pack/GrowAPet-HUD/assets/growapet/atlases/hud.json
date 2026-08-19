@@ -1,9 +1,0 @@
-{
-  "sources": [
-    { "type": "single", "resource": "minecraft:item/gold_nugget", "sprite": "growapet:coin" },
-    { "type": "single", "resource": "minecraft:item/diamond", "sprite": "growapet:gem" },
-    { "type": "single", "resource": "minecraft:item/amethyst_shard", "sprite": "growapet:credit" },
-    { "type": "single", "resource": "minecraft:item/iron_sword", "sprite": "growapet:damage" },
-    { "type": "single", "resource": "minecraft:item/experience_bottle", "sprite": "growapet:level" }
-  ]
-}

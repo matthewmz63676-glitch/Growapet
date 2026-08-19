@@ -70,7 +70,8 @@ public class ZoneManager {
                 wall = new WallRegion(wallWorld, wallSec.getInt("x1"), wallSec.getInt("y1"), wallSec.getInt("z1"), wallSec.getInt("x2"), wallSec.getInt("y2"), wallSec.getInt("z2"), cam);
             }
             String regionId = sec.getString("region", "growapet_" + id);
-            Zone zone = new Zone(id, sec.getString("display-name", id), sec.getInt("order", 0), sec.getLong("cost", 0L), sec.getLong("gem-cost", 0L), sec.getInt("req-level", 0), loc, wall, regionId);
+            boolean free = "spawn".equals(id) || sec.getBoolean("free", false);
+            Zone zone = new Zone(id, sec.getString("display-name", id), sec.getInt("order", 0), sec.getLong("cost", 0L), sec.getLong("gem-cost", 0L), sec.getInt("req-level", 0), loc, wall, regionId, free);
             this.zones.put(id, zone);
             validateRegion(zone);
         }
@@ -157,7 +158,8 @@ public class ZoneManager {
     }
 
     public boolean isUnlocked(Player player, String zoneId) {
-        if ("spawn".equals(zoneId)) {
+        Zone zone = this.zones.get(zoneId);
+        if (zone != null && zone.isFree()) {
             return true;
         }
         PlayerData data = this.plugin.getPlayerManager().get(player);

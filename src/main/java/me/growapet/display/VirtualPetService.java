@@ -17,7 +17,6 @@ import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerUp
 import io.github.retrooper.packetevents.util.SpigotReflectionUtil;
 import me.growapet.GrowAPet;
 import me.growapet.models.Pet;
-import me.growapet.models.Plot;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
@@ -124,8 +123,14 @@ public final class VirtualPetService {
         if (!viewer.isOnline() || !viewer.getWorld().equals(pet.location.getWorld())) return false;
         double range = Math.max(8, plugin.getConfigManager().config().getDouble("virtual-displays.view-distance", 64));
         if (viewer.getLocation().distanceSquared(pet.location) > range * range) return false;
-        Plot plot = plugin.getPlotManager().getPlot(pet.owner);
-        return plot != null && plot.contains(pet.location) && plot.contains(viewer.getLocation());
+        if (!plugin.getPlotManager().isPlotRegion(pet.location) || !plugin.getPlotManager().isPlotRegion(viewer.getLocation())) return false;
+        return plugin.getPlotVisitManager().currentHost(viewer.getUniqueId()).equals(pet.owner);
+    }
+
+    /** Re-syncs every placed pet's visibility for one viewer immediately, instead of waiting for the next tick. */
+    public void refreshViewer(Player viewer) {
+        requireMain();
+        for (VirtualPet pet : List.copyOf(pets.values())) reconcile(pet, viewer);
     }
 
     private void spawn(Player viewer, VirtualPet pet) {

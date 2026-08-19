@@ -1,0 +1,9 @@
+# Optional menu layout overrides. GrowAPet supplies secure defaults when a key
+# is absent, so existing live configuration can be extended without replacement.
+warp-gui:
+  title: "&8Warps"
+  size: 27
+
+pets-gui:
+  title: "&8Your Pets"
+  size: 54

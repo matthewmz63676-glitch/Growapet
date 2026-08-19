@@ -1,2 +1,0 @@
-# Paper E2E fixture: the test server is disposable and accepts the Minecraft EULA.
-eula=true

@@ -234,8 +234,30 @@ public final class MobManager {
         customHealth.put(entityId, remaining);
         entity.getPersistentDataContainer().set(currentHealthKey, PersistentDataType.DOUBLE, remaining);
         entity.setNoDamageTicks(0);
+        playHitFeedback(entity, attacker);
         updateHologram(entity);
         if (remaining <= 0.0) killTracked(entity, attacker);
+    }
+
+    /**
+     * The custom damage pipeline cancels the vanilla {@code EntityDamageByEntityEvent} outright
+     * (so it can apply its own HP/reward logic instead), which silently swallows the normal
+     * red-flash hurt animation and hit sound along with it. This replays both by hand so every
+     * landed hit still gets visible/audible feedback.
+     */
+    private void playHitFeedback(LivingEntity entity, Player attacker) {
+        Location from = attacker.getLocation();
+        Location to = entity.getLocation();
+        float angle = (float) (Math.toDegrees(Math.atan2(from.getZ() - to.getZ(), from.getX() - to.getX())) - 90.0);
+        entity.playHurtAnimation(angle);
+
+        String mobId = entity.getPersistentDataContainer().get(mobIdKey, PersistentDataType.STRING);
+        ConfigurationSection config = mobId == null ? null : getMobConfig(mobId);
+        if (config != null && config.isString("hit-sound")) {
+            playConfiguredSound(to, config, "hit-sound");
+        } else if (to.getWorld() != null) {
+            to.getWorld().playSound(to, Sound.ENTITY_PLAYER_ATTACK_CRIT, 1.0f, 1.0f);
+        }
     }
 
     public boolean killTracked(LivingEntity entity, Player killer) {

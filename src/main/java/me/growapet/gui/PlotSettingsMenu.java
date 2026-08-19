@@ -32,11 +32,8 @@ public final class PlotSettingsMenu extends Menu {
         }
         int eggs = plugin.getEggIncubationManager().countActive(viewer.getUniqueId());
         setItem(4, item(Material.GRASS_BLOCK, "<green><bold>PLOT #" + plot.getId() + "</bold></green>", List.of(
-                "<gray>• Size → <white>" + plot.getSize() + " × " + plot.getSize() + "</white></gray>",
                 "<gray>• Pet slots → <white>" + plot.getPetLimit() + "</white></gray>",
                 "<gray>• Incubators → <white>" + eggs + " / " + plot.getEggLimit() + "</white></gray>")), null);
-        setItem(20, upgrade(Material.OAK_FENCE, "PLOT SIZE", "Adds eight blocks per side.",
-                PlotManager.Upgrade.SIZE, plot), event -> buy(PlotManager.Upgrade.SIZE));
         setItem(22, upgrade(Material.BONE, "PET CAPACITY", "Adds one active pet slot.",
                 PlotManager.Upgrade.PET_SLOTS, plot), event -> buy(PlotManager.Upgrade.PET_SLOTS));
         setItem(24, upgrade(Material.TURTLE_EGG, "INCUBATOR CAPACITY", "Adds one incubation slot.",
@@ -46,7 +43,7 @@ public final class PlotSettingsMenu extends Menu {
         setItem(40, item(Material.ENDER_PEARL, "<aqua><bold>TELEPORT HOME</bold></aqua>",
                 List.of("<gray>• Destination → <white>your safe plot spawn</white></gray>", "", "<aqua>Click → teleport</aqua>")), event -> {
             viewer.closeInventory();
-            plugin.getPlotManager().teleportHome(viewer, plot).thenAccept(success -> {
+            plugin.getPlotManager().teleportHome(viewer).thenAccept(success -> {
                 if (success) Messages.send(viewer, "<green>Teleported to your plot.</green>");
                 else Messages.send(viewer, "<red>Unable to teleport to your plot safely.</red>");
             });

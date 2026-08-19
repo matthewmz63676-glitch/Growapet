@@ -1,0 +1,14 @@
+prefix: "&7[&aGrowAPet&7] "
+
+plot:
+  created: "&aA plot has been created for you! Use &e/plot home &ato visit it."
+  no-plot: "&cYou don't have a plot yet."
+  teleported: "&aTeleported to your plot."
+  egg-outside-plot: "&cYou can only place eggs inside your own plot!"
+
+pets:
+  hatched: "&d&lPET HATCHED! &r&7You received a &e{rarity} {size} {type}&7!"
+  no-pets: "&7You don't have any pets yet. Hatch an egg in your plot!"
+
+leveling:
+  level-up: "&a&lLEVEL UP! &7You are now level &e{level}"

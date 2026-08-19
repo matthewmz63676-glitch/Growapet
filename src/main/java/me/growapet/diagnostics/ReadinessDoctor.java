@@ -98,6 +98,9 @@ public final class ReadinessDoctor {
         checks.add(plots == null
                 ? new Check("Plot world", Status.FAIL, "configured plot world '" + plotWorld + "' is not loaded")
                 : new Check("Plot world", Status.OK, "loaded: " + plots.getName()));
+        checks.add(plugin.getPlotManager().isRegionUsable()
+                ? new Check("Plot region", Status.OK, "shared plot WorldGuard region is a usable cuboid")
+                : new Check("Plot region", Status.FAIL, "missing/non-cuboid WorldGuard region '" + plugin.getConfigManager().config().getString("plot.region", "plot") + "'; egg placement and placed pets/eggs are disabled"));
         for (Zone zone : plugin.getZoneManager().getZonesInOrder()) {
             String regionProblem = plugin.getZoneManager().validationProblems().get(zone.getId());
             if (regionProblem != null) {

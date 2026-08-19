@@ -1,0 +1,4 @@
+-------------------------------------------------------------------------------
+Test set: me.growapet.database.MigrationCompatibilityTest
+-------------------------------------------------------------------------------
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 5.827 s -- in me.growapet.database.MigrationCompatibilityTest

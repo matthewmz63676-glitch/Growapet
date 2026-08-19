@@ -21,8 +21,9 @@ public class Zone {
     private final Location warp;
     private final WallRegion wall;
     private final String regionId;
+    private final boolean free;
 
-    public Zone(String id, String displayName, int order, long cost, long gemCost, int reqLevel, Location warp, WallRegion wall, String regionId) {
+    public Zone(String id, String displayName, int order, long cost, long gemCost, int reqLevel, Location warp, WallRegion wall, String regionId, boolean free) {
         this.id = id;
         this.displayName = displayName;
         this.order = order;
@@ -32,6 +33,7 @@ public class Zone {
         this.warp = warp;
         this.wall = wall;
         this.regionId = regionId;
+        this.free = free;
     }
 
     public boolean hasWall() {
@@ -80,5 +82,10 @@ public class Zone {
 
     public String getRegionId() {
         return this.regionId;
+    }
+
+    /** True for zones players can use immediately without unlocking (e.g. the starter zone). */
+    public boolean isFree() {
+        return this.free;
     }
 }

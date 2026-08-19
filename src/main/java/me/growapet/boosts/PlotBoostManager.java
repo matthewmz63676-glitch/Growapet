@@ -115,9 +115,11 @@ public final class PlotBoostManager {
     public void refreshDisplay(UUID owner) {
         if (!Bukkit.isPrimaryThread()) { Bukkit.getScheduler().runTask(plugin, () -> refreshDisplay(owner)); return; }
         Plot plot = plugin.getPlotManager().getPlot(owner); if (plot == null) return;
+        Location center = plugin.getPlotManager().plotCenter(); if (center == null) return;
         VirtualTextDisplayService.Handle prior = displays.remove(owner); if (prior != null) plugin.getVirtualTextDisplays().remove(prior);
-        Location location = plot.getCenter().clone().add(0.5, 2.8, 0.5);
-        displays.put(owner, plugin.getVirtualTextDisplays().create(location, text(owner), viewer -> plot.contains(viewer.getLocation())));
+        Location location = center.clone().add(0.5, 2.8, 0.5);
+        displays.put(owner, plugin.getVirtualTextDisplays().create(location, text(owner),
+                viewer -> plugin.getPlotManager().isPlotRegion(viewer.getLocation()) && plugin.getPlotVisitManager().currentHost(viewer.getUniqueId()).equals(owner)));
     }
 
     private void refreshAll() {

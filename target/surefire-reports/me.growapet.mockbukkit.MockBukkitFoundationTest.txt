@@ -1,0 +1,4 @@
+-------------------------------------------------------------------------------
+Test set: me.growapet.mockbukkit.MockBukkitFoundationTest
+-------------------------------------------------------------------------------
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.809 s -- in me.growapet.mockbukkit.MockBukkitFoundationTest

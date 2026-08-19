@@ -22,7 +22,8 @@ final class Migrations {
                 new Migration(9, Migrations::persistentMobSpawnSchema),
                 new Migration(10, Migrations::laterIntegrationsSchema),
                 new Migration(11, Migrations::laterIntegrationsHardeningSchema),
-                new Migration(12, Migrations::discordLinkReuseSchema)
+                new Migration(12, Migrations::discordLinkReuseSchema),
+                new Migration(13, Migrations::clientSidedPlotSchema)
         );
     }
 
@@ -176,6 +177,27 @@ final class Migrations {
         try (Statement statement = connection.createStatement()) {
             statement.executeUpdate("UPDATE discord_links SET unlinked_discord_id=discord_id,discord_id='unlinked:'||player_uuid||':'||unlinked_at WHERE unlinked_at IS NOT NULL AND unlinked_discord_id IS NULL");
         }
+    }
+
+    /**
+     * Plots and incubating eggs stopped being real per-owner physical space (see PlotManager/
+     * EggIncubationManager) — every player's plot is now the same single shared WorldGuard region, and
+     * eggs are packet-only, so several owners can legitimately anchor one at the same visual coordinate.
+     * {@code plots} drops its now-meaningless x/y/z/size columns; {@code incubating_eggs} needs
+     * {@code owner} added to its primary key so that no longer collides. SQLite can't ALTER a primary
+     * key in place, so both are rebuilt.
+     */
+    private static void clientSidedPlotSchema(Connection connection) throws SQLException {
+        execute(connection,
+                "CREATE TABLE IF NOT EXISTS plots_v2 (owner TEXT PRIMARY KEY, id INTEGER UNIQUE NOT NULL, pet_limit INTEGER NOT NULL DEFAULT 5, egg_limit INTEGER NOT NULL DEFAULT 3)",
+                "INSERT OR IGNORE INTO plots_v2(owner,id,pet_limit,egg_limit) SELECT owner,id,pet_limit,egg_limit FROM plots",
+                "DROP TABLE plots",
+                "ALTER TABLE plots_v2 RENAME TO plots",
+                "CREATE TABLE IF NOT EXISTS incubating_eggs_v2 (owner TEXT NOT NULL, world TEXT NOT NULL, x INTEGER NOT NULL, y INTEGER NOT NULL, z INTEGER NOT NULL, entity_type TEXT NOT NULL, total_seconds INTEGER NOT NULL, hatch_at INTEGER NOT NULL, PRIMARY KEY(owner,world,x,y,z))",
+                "INSERT OR IGNORE INTO incubating_eggs_v2(owner,world,x,y,z,entity_type,total_seconds,hatch_at) SELECT owner,world,x,y,z,entity_type,total_seconds,hatch_at FROM incubating_eggs",
+                "DROP TABLE incubating_eggs",
+                "ALTER TABLE incubating_eggs_v2 RENAME TO incubating_eggs"
+        );
     }
 
     private static void execute(Connection connection, String... statements) throws SQLException {

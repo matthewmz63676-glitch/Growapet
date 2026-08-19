@@ -107,6 +107,9 @@ public final class PetManager {
         recalculateOwner(owner); save(pet); return true;
     }
 
+    /** Re-syncs which of this owner's placed pets a specific viewer sees right now (e.g. after /plot visit). */
+    public void refreshViewer(org.bukkit.entity.Player viewer) { virtualPets.refreshViewer(viewer); }
+
     public boolean unequip(UUID owner, UUID petId) {
         requireMain();
         Pet pet = getPet(owner, petId);
@@ -133,14 +136,18 @@ public final class PetManager {
     }
 
     private void cleanupLegacyEntities(Plot plot) {
-        double radius = Math.max(8, plot.getSize() / 2.0 + 4);
-        for (Entity entity : new ArrayList<>(plot.getCenter().getWorld().getNearbyEntities(
-                plot.getCenter(), radius, 32, radius, this::isPet))) entity.remove();
+        Location center = plugin.getPlotManager().plotCenter();
+        if (center == null || center.getWorld() == null) return;
+        double radius = 32;
+        for (Entity entity : new ArrayList<>(center.getWorld().getNearbyEntities(
+                center, radius, 32, radius, this::isPet))) entity.remove();
     }
 
     private void showVirtualPet(Pet pet, Plot plot, int index) {
-        Location anchor = plugin.getPlotManager().homeLocation(plot).add((index % 3) * 4 - 4, 0, 3 + (index / 3.0) * 4);
-        if (!plot.contains(anchor)) anchor = plot.getCenter().clone();
+        Location center = plugin.getPlotManager().plotCenter();
+        Location anchor = center == null
+                ? plugin.getPlotManager().homeLocation()
+                : center.clone().add((index % 3) * 4 - 4, 0, 3 + (index / 3.0) * 4);
         virtualPets.show(pet, anchor);
         pet.setEntityUuid(null);
         pet.setLocation(anchor.getWorld().getName(), anchor.getX(), anchor.getY(), anchor.getZ());
