@@ -9,6 +9,7 @@ import org.bukkit.entity.Player;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.Connection;
+import java.time.Clock;
 import java.time.Duration;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -18,9 +19,11 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class DailyManager {
     public static final long COOLDOWN_MILLIS = Duration.ofHours(24).toMillis();
     private final GrowAPet plugin;
+    private final Clock clock;
     private final java.util.Set<UUID> pending = ConcurrentHashMap.newKeySet();
 
-    public DailyManager(GrowAPet plugin) { this.plugin = plugin; }
+    public DailyManager(GrowAPet plugin) { this(plugin, Clock.systemUTC()); }
+    DailyManager(GrowAPet plugin, Clock clock) { this.plugin = plugin; this.clock = java.util.Objects.requireNonNull(clock, "clock"); }
 
     public CompletableFuture<Status> status(UUID playerId) {
         return plugin.getDatabase().async(connection -> {
@@ -43,7 +46,7 @@ public final class DailyManager {
             Messages.send(player, "<red>Another reward transaction is already in progress.</red>");
             return CompletableFuture.completedFuture(false);
         }
-        long now = System.currentTimeMillis();
+        long now = clock.millis();
         CompletableFuture<Boolean> result = new CompletableFuture<>();
         java.util.concurrent.atomic.AtomicBoolean claimed = new java.util.concurrent.atomic.AtomicBoolean();
         plugin.getDatabase().transaction(connection -> {

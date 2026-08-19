@@ -1,10 +1,13 @@
 package me.growapet.mobs;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Tag;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+@Tag("fast")
+@Tag("regression")
 final class MobSpawnPointValidationTest {
     @Test void acceptsStableAdminIdsAndRejectsAmbiguousValues() {
         assertTrue(MobSpawnPointManager.isValidId("forest-zombies_1"));

@@ -4,6 +4,7 @@ import org.bukkit.Location;
 import org.bukkit.entity.EntityType;
 
 import java.util.UUID;
+import java.time.Clock;
 
 public final class IncubatingEgg {
     private final UUID owner;
@@ -19,5 +20,7 @@ public final class IncubatingEgg {
     public UUID getOwner(){return owner;} public EntityType getEntityType(){return entityType;}
     public Location getLocation(){return location;} public int getTotalSeconds(){return totalSeconds;}
     public long getHatchAt(){return hatchAt;}
-    public int getSecondsRemaining(){return Math.max(0,(int)Math.ceil((hatchAt-System.currentTimeMillis())/1000.0));}
+    public int getSecondsRemaining(){return getSecondsRemaining(System.currentTimeMillis());}
+    public int getSecondsRemaining(Clock clock){return getSecondsRemaining(clock.millis());}
+    int getSecondsRemaining(long now){return Math.max(0,(int)Math.ceil((hatchAt-now)/1000.0));}
 }

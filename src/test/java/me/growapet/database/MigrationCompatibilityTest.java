@@ -1,6 +1,7 @@
 package me.growapet.database;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.nio.file.Path;
@@ -9,6 +10,7 @@ import java.sql.DriverManager;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+@Tag("database")
 class MigrationCompatibilityTest {
     @TempDir Path temporary;
 

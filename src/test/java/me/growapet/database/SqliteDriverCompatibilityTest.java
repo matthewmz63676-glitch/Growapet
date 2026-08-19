@@ -9,8 +9,11 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.Statement;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.io.TempDir;
 
+@Tag("database")
+@Tag("regression")
 class SqliteDriverCompatibilityTest {
     @TempDir
     Path temporaryDirectory;

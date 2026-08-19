@@ -1,3 +1,9 @@
 target/
+e2e/run/
+e2e/staged/
+e2e/build/
+e2e/.gradle/
+e2e/**/node_modules/
+e2e/**/dist/
 *.iml
 .idea/

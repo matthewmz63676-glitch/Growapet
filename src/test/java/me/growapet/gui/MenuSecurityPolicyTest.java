@@ -3,10 +3,13 @@ package me.growapet.gui;
 import org.bukkit.event.inventory.ClickType;
 import org.bukkit.event.inventory.InventoryAction;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Tag;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+@Tag("fast")
+@Tag("regression")
 final class MenuSecurityPolicyTest {
     @Test void onlySimpleTopSlotInteractionsCanDispatch(){
         assertTrue(MenuListener.isDispatchable(ClickType.LEFT,InventoryAction.PICKUP_ALL));

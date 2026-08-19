@@ -1,0 +1,31 @@
+database:
+  type: sqlite
+plot:
+  world: growapet_plots_e2e
+  spacing: 64
+  grid-width: 10
+  default-size: 32
+  default-pet-limit: 5
+  default-egg-limit: 3
+economy:
+  starting-coins: 100
+  starting-gems: 0
+  starting-credits: 0
+autosave-interval-seconds: 5
+trade:
+  request-cooldown-seconds: 1
+  request-expiry-seconds: 5
+chat-games:
+  interval-seconds: 60
+mob-spawns:
+  tick-period-ticks: 20
+  spawn-burst-per-tick: 1
+  max-tracked-mobs: 100
+  max-respawn-queue: 100
+spawn:
+  world: world
+  x: 0.5
+  y: 5
+  z: 0.5
+  yaw: 0
+  pitch: 0

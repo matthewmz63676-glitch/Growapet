@@ -2,14 +2,16 @@ package me.growapet.display;
 
 import com.github.retrooper.packetevents.PacketEvents;
 import com.github.retrooper.packetevents.protocol.attribute.Attributes;
+import com.github.retrooper.packetevents.protocol.entity.EntityPositionData;
 import com.github.retrooper.packetevents.protocol.entity.data.EntityData;
 import com.github.retrooper.packetevents.protocol.entity.data.EntityDataTypes;
 import com.github.retrooper.packetevents.protocol.entity.type.EntityType;
 import com.github.retrooper.packetevents.protocol.entity.type.EntityTypes;
 import com.github.retrooper.packetevents.util.Vector3d;
+import com.github.retrooper.packetevents.wrapper.PacketWrapper;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerDestroyEntities;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerEntityMetadata;
-import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerEntityTeleport;
+import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerEntityPositionSync;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerSpawnEntity;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerUpdateAttributes;
 import io.github.retrooper.packetevents.util.SpigotReflectionUtil;
@@ -95,8 +97,7 @@ public final class VirtualPetService {
             pet.location.setYaw((float) Math.toDegrees(-angle + Math.PI / 2));
             for (UUID viewerId : List.copyOf(pet.viewers)) {
                 Player viewer = Bukkit.getPlayer(viewerId);
-                if (viewer != null && viewer.isOnline()) send(viewer, new WrapperPlayServerEntityTeleport(
-                        pet.entityId, vector(pet.location), pet.location.getYaw(), 0, true));
+                if (viewer != null && viewer.isOnline()) send(viewer, positionSync(pet.entityId, pet.location, 0, true));
             }
             reconcileAll(pet);
         }
@@ -154,7 +155,12 @@ public final class VirtualPetService {
     }
 
     private static void destroy(Player viewer, int id) { send(viewer, new WrapperPlayServerDestroyEntities(id)); }
-    private static void send(Player viewer, Object packet) { PacketEvents.getAPI().getPlayerManager().sendPacket(viewer, packet); }
+    /** Paper 1.21.11 uses sync_entity_position for the full position payload. */
+    private static WrapperPlayServerEntityPositionSync positionSync(int entityId, Location location, float pitch, boolean onGround) {
+        return new WrapperPlayServerEntityPositionSync(entityId,
+                new EntityPositionData(vector(location), Vector3d.zero(), location.getYaw(), pitch), onGround);
+    }
+    private static void send(Player viewer, PacketWrapper<?> packet) { PacketEvents.getAPI().getPlayerManager().sendPacket(viewer, packet); }
     private static Vector3d vector(Location location) { return new Vector3d(location.getX(), location.getY(), location.getZ()); }
 
     private static EntityType packetType(Pet pet) {

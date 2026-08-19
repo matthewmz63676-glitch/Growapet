@@ -2,6 +2,7 @@ package me.growapet.config;
 
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Tag;
 
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -9,6 +10,8 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+@Tag("fast")
+@Tag("regression")
 final class BundledConfigurationTest {
     private static final List<String> FILES=List.of("config.yml","mobs.yml","pets.yml","eggs.yml","zones.yml","quests.yml","bosses.yml","menus.yml","messages.yml","hud.yml","tutorial.yml","plugin.yml");
 
