@@ -15,7 +15,9 @@
         <packetevents.version>2.13.0</packetevents.version>
         <!-- 7.0.18 is built for Java 25; 7.0.17 is the newest Java 21 release. -->
         <worldguard.version>7.0.17</worldguard.version>
-        <junit.version>5.10.2</junit.version>
+        <mockbukkit.version>4.110.0</mockbukkit.version>
+        <junit.version>6.0.3</junit.version>
+        <jacoco.version>0.8.13</jacoco.version>
         <jda.version>6.5.0</jda.version>
     </properties>
 
@@ -42,7 +44,26 @@
         </repository>
     </repositories>
 
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.junit</groupId>
+                <artifactId>junit-bom</artifactId>
+                <version>${junit.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
     <dependencies>
+        <!-- MockBukkit targets the exact Paper API line used by GrowAPet. Keep it test-only. -->
+        <dependency>
+            <groupId>org.mockbukkit.mockbukkit</groupId>
+            <artifactId>mockbukkit-v1.21</artifactId>
+            <version>${mockbukkit.version}</version>
+            <scope>test</scope>
+        </dependency>
         <!-- Minecraft 1.21.11 Paper API; provided by the server at runtime. -->
         <dependency>
             <groupId>io.papermc.paper</groupId>
@@ -98,7 +119,16 @@
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>
-            <version>${junit.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-engine</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.platform</groupId>
+            <artifactId>junit-platform-launcher</artifactId>
             <scope>test</scope>
         </dependency>
         <!-- Embedded Discord account-linking/chat integration. Audio is intentionally not enabled. -->
@@ -170,6 +200,81 @@
                     </execution>
                 </executions>
             </plugin>
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>${jacoco.version}</version>
+                <executions>
+                    <execution>
+                        <id>prepare-agent</id>
+                        <goals>
+                            <goal>prepare-agent</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>report</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>report</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <profile>
+            <id>coverage-gate</id>
+            <activation>
+                <property>
+                    <name>coverage-gate</name>
+                </property>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.jacoco</groupId>
+                        <artifactId>jacoco-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>check-critical-packages</id>
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>check</goal>
+                                </goals>
+                                <configuration>
+                                    <rules>
+                                        <rule>
+                                            <element>PACKAGE</element>
+                                            <includes>
+                                                <include>me.growapet.models.*</include>
+                                                <include>me.growapet.database.*</include>
+                                                <include>me.growapet.quests.*</include>
+                                                <include>me.growapet.trade.*</include>
+                                                <include>me.growapet.settings.*</include>
+                                                <include>me.growapet.rewards.*</include>
+                                            </includes>
+                                            <limits>
+                                                <limit>
+                                                    <counter>LINE</counter>
+                                                    <value>COVEREDRATIO</value>
+                                                    <minimum>0.80</minimum>
+                                                </limit>
+                                                <limit>
+                                                    <counter>BRANCH</counter>
+                                                    <value>COVEREDRATIO</value>
+                                                    <minimum>0.70</minimum>
+                                                </limit>
+                                            </limits>
+                                        </rule>
+                                    </rules>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>

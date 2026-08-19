@@ -1,0 +1,12 @@
+tutorial:
+  enabled: false
+  auto-start: false
+  allow-replay: false
+  teleport-player: false
+  world: world
+  walk-blocks-per-tick: 0.19
+  route:
+    start: { x: 0, y: 5, z: 0, yaw: 0, pitch: 0 }
+    mob: { x: 4, y: 5, z: 0 }
+    shop: { x: 8, y: 5, z: 0 }
+    egg: { x: 12, y: 5, z: 0 }

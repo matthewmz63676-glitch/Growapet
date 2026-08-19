@@ -1,10 +1,13 @@
 package me.growapet.listeners;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Tag;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+@Tag("fast")
+@Tag("regression")
 final class CommandLockdownPolicyTest {
     @Test void administratorsBypassTheEntireBlacklistIncludingNamespacedCommands() {
         assertTrue(CommandLockdownPolicy.permitsLabel("pl", true, false));
@@ -13,6 +16,8 @@ final class CommandLockdownPolicyTest {
 
     @Test void regularPlayersRemainRestrictedToGrowAPetAndAnInstalledServerCommand() {
         assertTrue(CommandLockdownPolicy.permitsLabel("plot", false, false));
+        assertTrue(CommandLockdownPolicy.permitsLabel("cosmetics", false, false));
+        assertTrue(CommandLockdownPolicy.permitsLabel("season", false, false));
         assertTrue(CommandLockdownPolicy.permitsLabel("server", false, true));
         assertFalse(CommandLockdownPolicy.permitsLabel("pl", false, false));
         assertFalse(CommandLockdownPolicy.permitsLabel("minecraft:gamemode", false, false));

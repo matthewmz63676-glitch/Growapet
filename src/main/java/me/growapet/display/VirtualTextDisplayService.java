@@ -1,13 +1,15 @@
 package me.growapet.display;
 
 import com.github.retrooper.packetevents.PacketEvents;
+import com.github.retrooper.packetevents.protocol.entity.EntityPositionData;
 import com.github.retrooper.packetevents.protocol.entity.data.EntityData;
 import com.github.retrooper.packetevents.protocol.entity.data.EntityDataTypes;
 import com.github.retrooper.packetevents.protocol.entity.type.EntityTypes;
 import com.github.retrooper.packetevents.util.Vector3d;
+import com.github.retrooper.packetevents.wrapper.PacketWrapper;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerDestroyEntities;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerEntityMetadata;
-import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerEntityTeleport;
+import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerEntityPositionSync;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerSpawnEntity;
 import io.github.retrooper.packetevents.util.SpigotReflectionUtil;
 import me.growapet.GrowAPet;
@@ -116,8 +118,8 @@ public final class VirtualTextDisplayService {
             refresh(display);
             return;
         }
-        WrapperPlayServerEntityTeleport packet = new WrapperPlayServerEntityTeleport(
-                display.entityId, vector(location), location.getYaw(), location.getPitch(), false);
+        WrapperPlayServerEntityPositionSync packet = new WrapperPlayServerEntityPositionSync(display.entityId,
+                new EntityPositionData(vector(location), Vector3d.zero(), location.getYaw(), location.getPitch()), false);
         for (UUID viewerId : List.copyOf(display.viewers)) {
             Player viewer = Bukkit.getPlayer(viewerId);
             if (viewer != null && viewer.isOnline()) send(viewer, packet);
@@ -225,7 +227,7 @@ public final class VirtualTextDisplayService {
         send(viewer, new WrapperPlayServerDestroyEntities(entityId));
     }
 
-    private static void send(Player player, Object packet) {
+    private static void send(Player player, PacketWrapper<?> packet) {
         PacketEvents.getAPI().getPlayerManager().sendPacket(player, packet);
     }
 

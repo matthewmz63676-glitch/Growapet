@@ -1,0 +1,95 @@
+regions:
+  __global__:
+    type: global
+    priority: 0
+    flags: {}
+    owners: {}
+    members: {}
+  growapet_spawn:
+    type: cuboid
+    priority: 0
+    min: { x: -32, y: -64, z: -32 }
+    max: { x: 32, y: 319, z: 32 }
+    flags: {}
+    owners: {}
+    members: {}
+  growapet_forest:
+    type: cuboid
+    priority: 0
+    min: { x: 64, y: -64, z: -32 }
+    max: { x: 128, y: 319, z: 32 }
+    flags: {}
+    owners: {}
+    members: {}
+  growapet_plains:
+    type: cuboid
+    priority: 0
+    min: { x: 160, y: -64, z: -32 }
+    max: { x: 224, y: 319, z: 32 }
+    flags: {}
+    owners: {}
+    members: {}
+  growapet_mushroom:
+    type: cuboid
+    priority: 0
+    min: { x: 256, y: -64, z: -32 }
+    max: { x: 320, y: 319, z: 32 }
+    flags: {}
+    owners: {}
+    members: {}
+  growapet_desert:
+    type: cuboid
+    priority: 0
+    min: { x: 352, y: -64, z: -32 }
+    max: { x: 416, y: 319, z: 32 }
+    flags: {}
+    owners: {}
+    members: {}
+  growapet_badlands:
+    type: cuboid
+    priority: 0
+    min: { x: 448, y: -64, z: -32 }
+    max: { x: 512, y: 319, z: 32 }
+    flags: {}
+    owners: {}
+    members: {}
+  growapet_snow:
+    type: cuboid
+    priority: 0
+    min: { x: 544, y: -64, z: -32 }
+    max: { x: 608, y: 319, z: 32 }
+    flags: {}
+    owners: {}
+    members: {}
+  growapet_deep_caves:
+    type: cuboid
+    priority: 0
+    min: { x: 640, y: -64, z: -32 }
+    max: { x: 704, y: 319, z: 32 }
+    flags: {}
+    owners: {}
+    members: {}
+  growapet_nether:
+    type: cuboid
+    priority: 0
+    min: { x: 736, y: -64, z: -32 }
+    max: { x: 800, y: 319, z: 32 }
+    flags: {}
+    owners: {}
+    members: {}
+  growapet_end:
+    type: cuboid
+    priority: 0
+    min: { x: 832, y: -64, z: -32 }
+    max: { x: 896, y: 319, z: 32 }
+    flags: {}
+    owners: {}
+    members: {}
+  growapet_ancient_realm:
+    type: cuboid
+    priority: 0
+    min: { x: 928, y: -64, z: -32 }
+    max: { x: 992, y: 319, z: 32 }
+    flags: {}
+    owners: {}
+    members: {}

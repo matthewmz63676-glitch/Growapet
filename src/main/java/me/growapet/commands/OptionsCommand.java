@@ -15,6 +15,15 @@ public final class OptionsCommand implements CommandExecutor {
 
     @Override public boolean onCommand(CommandSender sender,Command command,String label,String[]args){
         if(!(sender instanceof Player player)){Messages.send(sender,"<red>Only players can use this command.</red>");return true;}
+        if(!plugin.getOptionsManager().isLoaded(player.getUniqueId())){
+            Messages.send(player,"<yellow>Your preferences are still loading. Please try again shortly.</yellow>");
+            plugin.getOptionsManager().awaitLoaded(player.getUniqueId()).whenComplete((ignored,error)->
+                    Bukkit.getScheduler().runTask(plugin,()->{
+                        if(!player.isOnline()||error!=null)return;
+                        if(args.length==0)new OptionsMenu(plugin,player).open();
+                    }));
+            return true;
+        }
         if(args.length==1&&(args[0].equalsIgnoreCase("actionbar")||args[0].equalsIgnoreCase("trade")||args[0].equalsIgnoreCase("trades")||args[0].equalsIgnoreCase("discord")||args[0].equalsIgnoreCase("relay"))){
             boolean actionbar=args[0].equalsIgnoreCase("actionbar");
             boolean relay=args[0].equalsIgnoreCase("discord")||args[0].equalsIgnoreCase("relay");

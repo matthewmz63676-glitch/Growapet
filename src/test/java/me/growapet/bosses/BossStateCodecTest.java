@@ -1,6 +1,7 @@
 package me.growapet.bosses;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Tag;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -9,6 +10,7 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+@Tag("fast")
 class BossStateCodecTest {
     @Test void roundTripsDamageWithoutAcceptingInvalidValues() {
         UUID first = UUID.randomUUID(), second = UUID.randomUUID();

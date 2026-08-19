@@ -18,19 +18,26 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.SplittableRandom;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.ThreadLocalRandom;
+import java.util.random.RandomGenerator;
 
 public final class PetManager {
     private final GrowAPet plugin;
     private final Map<UUID, List<Pet>> ownerPets = new ConcurrentHashMap<>();
     private final NamespacedKey petIdKey;
     private final VirtualPetService virtualPets;
+    private final RandomGenerator random;
 
-    public PetManager(GrowAPet plugin) {
+    public PetManager(GrowAPet plugin) { this(plugin, createRuntimeRandom()); }
+
+    static RandomGenerator createRuntimeRandom() { return new SplittableRandom(); }
+
+    PetManager(GrowAPet plugin, RandomGenerator random) {
         this.plugin = plugin;
+        this.random = java.util.Objects.requireNonNull(random, "random");
         this.petIdKey = new NamespacedKey(plugin, "pet_uuid");
         this.virtualPets = new VirtualPetService(plugin);
     }
@@ -60,33 +67,15 @@ public final class PetManager {
     public void registerHatched(Pet pet) { requireMain(); if (getPet(pet.getOwner(), pet.getUuid()) == null) getPets(pet.getOwner()).add(pet); }
 
     private Pet.Rarity rollRarity() {
-        double total = 0;
-        for (Pet.Rarity rarity : Pet.Rarity.values()) total += Math.max(0, plugin.getConfigManager().pets().getDouble("rarities." + rarity.name() + ".weight", 0));
-        if (total <= 0) return Pet.Rarity.COMMON;
-        double roll = ThreadLocalRandom.current().nextDouble(total);
+        Map<Pet.Rarity, Double> weights = new java.util.EnumMap<>(Pet.Rarity.class);
         for (Pet.Rarity rarity : Pet.Rarity.values()) {
-            roll -= Math.max(0, plugin.getConfigManager().pets().getDouble("rarities." + rarity.name() + ".weight", 0));
-            if (roll <= 0) {
-                if (plugin.getEventManager().isActive(me.growapet.events.EventType.LUCKY_EGG)) return Pet.Rarity.values()[Math.min(Pet.Rarity.values().length-1,rarity.ordinal()+1)];
-                return rarity;
-            }
+            weights.put(rarity, plugin.getConfigManager().pets().getDouble("rarities." + rarity.name() + ".weight", 0));
         }
-        return Pet.Rarity.COMMON;
+        return PetRoller.rarity(random, weights, plugin.getEventManager().isActive(me.growapet.events.EventType.LUCKY_EGG));
     }
 
     private int rollSize(Pet.Rarity rarity) {
-        int[] range = switch (rarity) {
-            case COMMON -> new int[]{1, 100};
-            case UNCOMMON -> new int[]{101, 250};
-            case RARE -> new int[]{251, 450};
-            case EPIC -> new int[]{451, 650};
-            case LEGENDARY -> new int[]{651, 850};
-            case MYTHIC -> new int[]{851, 930};
-            case DIVINE -> new int[]{931, 970};
-            case SECRET -> new int[]{971, 995};
-            case EXCLUSIVE -> new int[]{996, 1000};
-        };
-        return ThreadLocalRandom.current().nextInt(range[0], range[1] + 1);
+        return PetRoller.size(random, rarity);
     }
 
     public CompletableFuture<Void> loadAll() {

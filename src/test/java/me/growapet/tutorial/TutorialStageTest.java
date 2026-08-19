@@ -1,9 +1,11 @@
 package me.growapet.tutorial;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Tag;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+@Tag("fast")
 final class TutorialStageTest {
     @Test void routeAdvancesOnlyInDependencyOrder() {
         assertEquals(TutorialAction.MOB_KILL, TutorialStage.MOB.expected());

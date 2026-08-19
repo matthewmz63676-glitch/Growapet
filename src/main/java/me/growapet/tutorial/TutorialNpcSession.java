@@ -1,15 +1,16 @@
 package me.growapet.tutorial;
 
 import com.github.retrooper.packetevents.PacketEvents;
+import com.github.retrooper.packetevents.protocol.entity.EntityPositionData;
 import com.github.retrooper.packetevents.protocol.entity.type.EntityTypes;
 import com.github.retrooper.packetevents.protocol.player.TextureProperty;
 import com.github.retrooper.packetevents.protocol.player.UserProfile;
-import com.github.retrooper.packetevents.protocol.world.Location;
 import com.github.retrooper.packetevents.util.Vector3d;
+import com.github.retrooper.packetevents.wrapper.PacketWrapper;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerDestroyEntities;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerEntityAnimation;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerEntityHeadLook;
-import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerEntityTeleport;
+import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerEntityPositionSync;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerPlayerInfoRemove;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerPlayerInfoUpdate;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerSpawnEntity;
@@ -113,7 +114,8 @@ final class TutorialNpcSession {
             boolean last = taken[0] >= total;
             if (last) { x = destination.getX(); y = destination.getY(); z = destination.getZ(); }
             else { x += stepX; z += stepZ; if (taken[0] % 6 == 0) swingArm(); }
-            send(new WrapperPlayServerEntityTeleport(entityId, new Location(vector(), yaw, pitch), true));
+            send(new WrapperPlayServerEntityPositionSync(entityId,
+                    new EntityPositionData(vector(), Vector3d.zero(), yaw, pitch), true));
             if (speech != null) plugin.getVirtualTextDisplays().teleport(speech, speechLocation());
             if (last) { cancelMovement(); onArrive.run(); }
         }, 1L, 1L);
@@ -137,7 +139,7 @@ final class TutorialNpcSession {
     }
 
     private void cancelMovement() { if (movement != null) movement.cancel(); movement = null; }
-    private void send(Object packet) { PacketEvents.getAPI().getPlayerManager().sendPacket(target, packet); }
+    private void send(PacketWrapper<?> packet) { PacketEvents.getAPI().getPlayerManager().sendPacket(target, packet); }
     private Vector3d vector() { return new Vector3d(x, y, z); }
     private org.bukkit.Location speechLocation() { return new org.bukkit.Location(world, x, y + SPEECH_Y_OFFSET, z); }
     TutorialStage stage() { return stage; }

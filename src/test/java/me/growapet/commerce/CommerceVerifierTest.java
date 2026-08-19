@@ -1,12 +1,14 @@
 package me.growapet.commerce;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Tag;
 
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+@Tag("fast")
 final class CommerceVerifierTest {
     private static final UUID PLAYER = UUID.fromString("12345678-1234-1234-1234-123456789abc");
 

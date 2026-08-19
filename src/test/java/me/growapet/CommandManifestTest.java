@@ -3,6 +3,7 @@ package me.growapet;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Tag;
 
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
@@ -11,6 +12,8 @@ import java.util.Set;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
+@Tag("fast")
+@Tag("regression")
 final class CommandManifestTest {
     private static final Set<String> EXPECTED = Set.of("growapet", "plot", "pets", "stats", "boss", "warp",
             "zones", "visit", "leaderboard", "getegg", "shop", "spawn", "setspawn", "store", "unlockzone",

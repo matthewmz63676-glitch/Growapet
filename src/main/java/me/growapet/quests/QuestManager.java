@@ -10,11 +10,7 @@ import me.growapet.rewards.RewardBundle;
 
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
-import java.time.LocalDate;
-import java.time.Duration;
-import java.time.ZonedDateTime;
-import java.time.ZoneOffset;
-import java.time.temporal.WeekFields;
+import java.time.Clock;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -26,10 +22,12 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public final class QuestManager {
     private final GrowAPet plugin;
+    private final Clock clock;
     private final Map<String,QuestDefinition> definitions=new LinkedHashMap<>();
     private final Map<UUID,Map<String,Progress>> progress=new ConcurrentHashMap<>();
     private final Map<UUID,CompletableFuture<Boolean>> pendingClaims=new ConcurrentHashMap<>();
-    public QuestManager(GrowAPet plugin){this.plugin=plugin;reload();}
+    public QuestManager(GrowAPet plugin){this(plugin, Clock.systemUTC());}
+    QuestManager(GrowAPet plugin, Clock clock){this.plugin=plugin;this.clock=java.util.Objects.requireNonNull(clock,"clock");reload();}
 
     public void reload(){
         definitions.clear();
@@ -90,14 +88,13 @@ public final class QuestManager {
     public List<String> keys(){return List.copyOf(definitions.keySet());}
     public String timeUntilReset(String group){
         if(group.equals("story"))return "never";
-        ZonedDateTime now=ZonedDateTime.now(ZoneOffset.UTC);ZonedDateTime reset=group.equals("weekly")?now.toLocalDate().plusDays(8-now.getDayOfWeek().getValue()).atStartOfDay(ZoneOffset.UTC):now.toLocalDate().plusDays(1).atStartOfDay(ZoneOffset.UTC);
-        Duration remaining=Duration.between(now,reset);long hours=remaining.toHours(),minutes=remaining.minusHours(hours).toMinutes();return hours+"h "+minutes+"m";
+        return QuestPeriods.timeUntilReset(group, clock);
     }
 
     private Progress current(UUID player,QuestDefinition definition){return progress.getOrDefault(player,Map.of()).getOrDefault(definition.key()+"@"+period(definition),new Progress(0,false));}
     private QuestDefinition find(String requested){return definitions.get(requested.contains(":")?requested:definitions.keySet().stream().filter(key->key.endsWith(":"+requested)).findFirst().orElse(""));}
     private void persist(UUID player,QuestDefinition definition,String period,Progress value){plugin.getDatabase().async(connection->{try(PreparedStatement statement=connection.prepareStatement("INSERT INTO quest_progress(player_uuid,quest_key,period_key,progress,claimed) VALUES(?,?,?,?,?) ON CONFLICT(player_uuid,quest_key,period_key) DO UPDATE SET progress=MAX(progress,excluded.progress),claimed=MAX(claimed,excluded.claimed)")){statement.setString(1,player.toString());statement.setString(2,definition.key());statement.setString(3,period);statement.setLong(4,value.value);statement.setInt(5,value.claimed?1:0);statement.executeUpdate();}return null;}).exceptionally(error->{plugin.getLogger().severe("Failed to persist quest progress for "+player+": "+error.getMessage());return null;});}
-    private static String period(QuestDefinition definition){LocalDate today=LocalDate.now(ZoneOffset.UTC);return switch(definition.group()){case"daily"->today.toString();case"weekly"->today.get(WeekFields.ISO.weekBasedYear())+"-W"+today.get(WeekFields.ISO.weekOfWeekBasedYear());default->"story";};}
+    private String period(QuestDefinition definition){return QuestPeriods.key(definition.group(), clock);}
     private record Progress(long value,boolean claimed){}
     public record QuestView(QuestDefinition definition,long progress,boolean claimed){}
 }
