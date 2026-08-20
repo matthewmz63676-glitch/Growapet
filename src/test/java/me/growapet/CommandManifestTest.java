@@ -15,10 +15,10 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 @Tag("fast")
 @Tag("regression")
 final class CommandManifestTest {
-    private static final Set<String> EXPECTED = Set.of("growapet", "plot", "pets", "stats", "boss", "warp",
-            "zones", "visit", "leaderboard", "getegg", "shop", "spawn", "setspawn", "store", "unlockzone",
+    private static final Set<String> EXPECTED = Set.of("growapet", "plot", "pets", "stats", "boss", "warp", "setwarp", "warpplayer",
+            "zones", "visit", "leaderboard", "getegg", "shop", "spawn", "setspawn", "store", "credits", "unlockzone",
             "quests", "trade", "options", "getmob", "mobspawn", "getpet", "autokill", "daily", "tutorial",
-            "link", "checklink", "unlink", "season", "cosmetics");
+            "link", "checklink", "unlink", "season", "cosmetics", "tag", "tagadmin", "customtag", "testannouncement", "topspent");
 
     @Test void everyDocumentedCommandIsDeclaredWithUsageText() throws Exception {
         try (var stream = getClass().getClassLoader().getResourceAsStream("plugin.yml")) {

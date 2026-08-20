@@ -22,7 +22,7 @@ import java.util.Set;
 
 /** Loads a complete, validated configuration snapshot before publishing it. */
 public final class ConfigManager {
-    private static final String[] FILES={"config.yml","mobs.yml","pets.yml","eggs.yml","zones.yml","quests.yml","bosses.yml","menus.yml","messages.yml","hud.yml","tutorial.yml","discord.yml","commerce.yml","cosmetics.yml","seasons.yml","shop-catalog.yml"};
+    private static final String[] FILES={"config.yml","mobs.yml","pets.yml","eggs.yml","zones.yml","quests.yml","bosses.yml","menus.yml","messages.yml","hud.yml","tutorial.yml","discord.yml","commerce.yml","cosmetics.yml","seasons.yml","shop-catalog.yml","announcements.yml","stats.yml","store.yml","warps.yml"};
     private final GrowAPet plugin;
     private final Map<String,FileConfiguration> configs=new HashMap<>();
     private final Map<String,File> files=new HashMap<>();
@@ -90,6 +90,11 @@ public final class ConfigManager {
         FileConfiguration seasons=candidate.get("seasons.yml");ConfigurationSection seasonRoot=seasons.getConfigurationSection("seasons");if(seasonRoot!=null)for(String id:seasonRoot.getKeys(false)){ConfigurationSection season=seasonRoot.getConfigurationSection(id);if(season==null||season.getString("definition-version","").isBlank()){problem("seasons.yml: missing definition-version for "+id);valid=false;}if(season!=null&&season.getLong("duration-days",14)<1){problem("seasons.yml: duration-days must be positive for "+id);valid=false;}}
         valid=validateSeasons(seasons)&&valid;
         valid=validateShopCatalog(candidate.get("shop-catalog.yml"))&&valid;
+        valid=validateStore(candidate.get("store.yml"))&&valid;
+        FileConfiguration announcements = candidate.get("announcements.yml");
+        long announcementInterval = announcements.getLong("interval-minutes", -1) > 0 ? announcements.getLong("interval-minutes", 45) * 60 : announcements.getLong("interval-seconds", 300);
+        long initialDelay = announcements.getLong("initial-delay-minutes", -1) >= 0 ? announcements.getLong("initial-delay-minutes", 2) * 60 : announcements.getLong("initial-delay-seconds", 0);
+        if(announcementInterval<10||announcementInterval>86400||initialDelay<0||initialDelay>86400){problem("announcements.yml: announcement interval/delay is outside safe bounds");valid=false;}
         return valid;
     }
 
@@ -151,10 +156,32 @@ public final class ConfigManager {
         return true;
     }
 
+    private boolean validateStore(FileConfiguration config) {
+        ConfigurationSection offers=config.getConfigurationSection("offers");
+        if(offers==null)return true;
+        boolean valid=true;Set<Integer>slots=new HashSet<>();
+        for(String id:offers.getKeys(false)){
+            ConfigurationSection offer=offers.getConfigurationSection(id);
+            if(!id.matches("[a-z0-9_-]{1,48}")||offer==null){problem("store.yml: invalid offer id "+id);valid=false;continue;}
+            long price=offer.getLong("price",-1);int slot=offer.getInt("slot",-1);
+            if(price<0||slot<0||slot>=54||!slots.add(slot)){problem("store.yml: invalid price/slot for "+id);valid=false;}
+            String type=offer.getString("type","").toUpperCase(Locale.ROOT);
+            if(!Set.of("ENTITLEMENT","SETTING","BOOST").contains(type)){problem("store.yml: invalid type for "+id);valid=false;}
+            if("ENTITLEMENT".equals(type)&&!offer.getString("entitlement-id","").matches("[A-Za-z0-9._:-]{1,128}")){problem("store.yml: invalid entitlement-id for "+id);valid=false;}
+            if("SETTING".equals(type)&&!offer.getString("setting","").matches("[A-Za-z0-9._:-]{1,128}")){problem("store.yml: invalid setting for "+id);valid=false;}
+            if("BOOST".equals(type)){
+                String boost=offer.getString("boost-type","").toUpperCase(Locale.ROOT);
+                double bonus=offer.getDouble("bonus",0);long minutes=offer.getLong("duration-minutes",0);
+                if(!Set.of("COINS","GEMS","MOB_EXP","PET_EXP","HATCH_SPEED").contains(boost)||!Double.isFinite(bonus)||bonus<=0||bonus>9||minutes<1||minutes>10080){problem("store.yml: invalid boost for "+id);valid=false;}
+            }
+        }
+        return valid;
+    }
+
     private boolean validateEntity(String path,String name){try{EntityType type=EntityType.valueOf(name.toUpperCase(Locale.ROOT));if(!type.isAlive()||!type.isSpawnable()||type==EntityType.ARMOR_STAND||type==EntityType.PLAYER)throw new IllegalArgumentException();return true;}catch(IllegalArgumentException|NullPointerException error){problem(path+": invalid living entity "+name);return false;}}
     private static long number(Map<?,?>map,String key,long fallback){Object value=map.get(key);return value instanceof Number number?number.longValue():fallback;}
     private void problem(String message){plugin.getLogger().warning(message);}
 
     public void save(String name){FileConfiguration cfg=configs.get(name);File file=files.get(name);if(cfg==null||file==null)return;try{cfg.save(file);}catch(Exception error){plugin.getLogger().warning("Couldn't save "+name+": "+error.getMessage());}}
-    public FileConfiguration get(String name){return configs.get(name);}public FileConfiguration config(){return get("config.yml");}public FileConfiguration mobs(){return get("mobs.yml");}public FileConfiguration pets(){return get("pets.yml");}public FileConfiguration eggs(){return get("eggs.yml");}public FileConfiguration zones(){return get("zones.yml");}public FileConfiguration quests(){return get("quests.yml");}public FileConfiguration bosses(){return get("bosses.yml");}public FileConfiguration menus(){return get("menus.yml");}public FileConfiguration messages(){return get("messages.yml");}public FileConfiguration hud(){return get("hud.yml");}public FileConfiguration tutorial(){return get("tutorial.yml");}public FileConfiguration discord(){return get("discord.yml");}public FileConfiguration commerce(){return get("commerce.yml");}public FileConfiguration cosmetics(){return get("cosmetics.yml");}public FileConfiguration seasons(){return get("seasons.yml");}public FileConfiguration shopCatalog(){return get("shop-catalog.yml");}
+    public FileConfiguration get(String name){return configs.get(name);}public FileConfiguration config(){return get("config.yml");}public FileConfiguration mobs(){return get("mobs.yml");}public FileConfiguration pets(){return get("pets.yml");}public FileConfiguration eggs(){return get("eggs.yml");}public FileConfiguration zones(){return get("zones.yml");}public FileConfiguration quests(){return get("quests.yml");}public FileConfiguration bosses(){return get("bosses.yml");}public FileConfiguration menus(){return get("menus.yml");}public FileConfiguration messages(){return get("messages.yml");}public FileConfiguration hud(){return get("hud.yml");}public FileConfiguration tutorial(){return get("tutorial.yml");}public FileConfiguration discord(){return get("discord.yml");}public FileConfiguration commerce(){return get("commerce.yml");}public FileConfiguration cosmetics(){return get("cosmetics.yml");}public FileConfiguration seasons(){return get("seasons.yml");}public FileConfiguration shopCatalog(){return get("shop-catalog.yml");}public FileConfiguration announcements(){return get("announcements.yml");}public FileConfiguration stats(){return get("stats.yml");}public FileConfiguration store(){return get("store.yml");}
 }

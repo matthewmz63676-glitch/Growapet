@@ -13,7 +13,7 @@ import static org.junit.jupiter.api.Assertions.*;
 @Tag("fast")
 @Tag("regression")
 final class BundledConfigurationTest {
-    private static final List<String> FILES=List.of("config.yml","mobs.yml","pets.yml","eggs.yml","zones.yml","quests.yml","bosses.yml","menus.yml","messages.yml","hud.yml","tutorial.yml","plugin.yml");
+    private static final List<String> FILES=List.of("config.yml","mobs.yml","pets.yml","eggs.yml","zones.yml","quests.yml","bosses.yml","menus.yml","messages.yml","hud.yml","tutorial.yml","discord.yml","cosmetics.yml","announcements.yml","stats.yml","store.yml","warps.yml","plugin.yml");
 
     @Test void everyBundledYamlFileParses() throws Exception {
         for(String name:FILES){

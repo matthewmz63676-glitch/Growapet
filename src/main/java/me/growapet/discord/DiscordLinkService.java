@@ -2,7 +2,6 @@ package me.growapet.discord;
 
 import me.growapet.GrowAPet;
 import me.growapet.rewards.RewardBundle;
-import org.bukkit.Bukkit;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;

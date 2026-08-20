@@ -2,27 +2,38 @@ package me.growapet.store;
 
 import me.growapet.boosts.BoostType;
 import org.bukkit.Material;
+import org.bukkit.configuration.ConfigurationSection;
 
-public enum StoreOffer {
-    GOLD_CHAT("Gold Chat Color", Material.GOLD_INGOT, 10, "chat_color", "&6", "Gold chat messages"),
-    AQUA_CHAT("Aqua Chat Color", Material.DIAMOND, 10, "chat_color", "&b", "Aqua chat messages"),
-    PET_LOVER_TAG("Pet Lover Tag", Material.NAME_TAG, 15, "chat_tag", "&d[Pet Lover]", "Pet Lover chat tag"),
-    COIN_BOOST("Coin Plot Booster", Material.GOLD_BLOCK, 10, BoostType.COINS, .50, 30, "+50% Coins for 30 minutes"),
-    GEM_BOOST("Gem Plot Booster", Material.DIAMOND_BLOCK, 12, BoostType.GEMS, .50, 30, "+50% Gems for 30 minutes"),
-    MOB_EXP_BOOST("Mob EXP Booster", Material.EXPERIENCE_BOTTLE, 10, BoostType.MOB_EXP, .50, 30, "+50% Mob EXP for 30 minutes"),
-    PET_EXP_BOOST("Pet EXP Booster", Material.ENCHANTED_BOOK, 10, BoostType.PET_EXP, .50, 30, "+50% Pet EXP for 30 minutes"),
-    HATCH_BOOST("Hatch Speed Booster", Material.TURTLE_EGG, 12, BoostType.HATCH_SPEED, .50, 30, "+50% Hatch Speed for 30 minutes");
+import java.time.Duration;
+import java.util.Locale;
+import java.util.Objects;
 
-    private final String displayName; private final Material icon; private final long price;
-    private final String setting, value, label; private final BoostType boostType; private final double boostBonus; private final int minutes;
-    StoreOffer(String name, Material icon, long price, String setting, String value, String label) {
-        this.displayName=name;this.icon=icon;this.price=price;this.setting=setting;this.value=value;this.label=label;this.boostType=null;this.boostBonus=0;this.minutes=0;
+/** Validated immutable store offer loaded from store.yml. */
+public record StoreOffer(String id, int slot, Material icon, String displayName, String description,
+                         long creditPrice, Type type, String entitlementId, String entitlementKind,
+                         String setting, String value, BoostType boostType, double boostBonus,
+                         long boostDurationMillis) {
+    public enum Type { ENTITLEMENT, SETTING, BOOST }
+
+    public StoreOffer {
+        Objects.requireNonNull(id);Objects.requireNonNull(icon);Objects.requireNonNull(displayName);Objects.requireNonNull(type);
+        if (description == null) description = "";
+        if (entitlementKind == null || entitlementKind.isBlank()) entitlementKind = "COSMETIC";
+        if (value == null) value = "";
+        if(!id.matches("[a-z0-9_-]{1,48}")||slot<0||slot>=54||creditPrice<0)throw new IllegalArgumentException("Invalid store offer "+id);
+        if(type==Type.ENTITLEMENT&&(entitlementId==null||!entitlementId.matches("[A-Za-z0-9._:-]{1,128}")))throw new IllegalArgumentException("Invalid entitlement offer "+id);
+        if(type==Type.SETTING&&(setting==null||!setting.matches("[A-Za-z0-9._:-]{1,128}")))throw new IllegalArgumentException("Invalid setting offer "+id);
+        if(type==Type.BOOST&&(boostType==null||!Double.isFinite(boostBonus)||boostBonus<=0||boostDurationMillis<=0))throw new IllegalArgumentException("Invalid boost offer "+id);
     }
-    StoreOffer(String name, Material icon, long price, BoostType type, double bonus, int minutes, String label) {
-        this.displayName=name;this.icon=icon;this.price=price;this.setting=null;this.value=null;this.label=label;this.boostType=type;this.boostBonus=bonus;this.minutes=minutes;
+
+    public static StoreOffer from(String id,ConfigurationSection section){
+        Type type=Type.valueOf(section.getString("type","").toUpperCase(Locale.ROOT));
+        Material icon=Material.matchMaterial(section.getString("material","PAPER"));if(icon==null||icon.isAir())icon=Material.PAPER;
+        BoostType boost=null;long duration=0;
+        if(type==Type.BOOST){boost=BoostType.valueOf(section.getString("boost-type","").toUpperCase(Locale.ROOT));duration=Duration.ofMinutes(section.getLong("duration-minutes",1)).toMillis();}
+        return new StoreOffer(id,section.getInt("slot"),icon,section.getString("display-name",id),section.getString("description",""),section.getLong("price"),type,
+                section.getString("entitlement-id"),section.getString("entitlement-kind","COSMETIC"),section.getString("setting"),section.getString("value",""),boost,section.getDouble("bonus"),duration);
     }
-    public String getDisplayName(){return displayName;} public Material getIcon(){return icon;} public long getCreditPrice(){return price;}
-    public String getRewardLabel(){return label;} public String getSetting(){return setting;} public String getValue(){return value;}
-    public boolean isBoost(){return boostType!=null;} public BoostType getBoostType(){return boostType;} public double getBoostBonus(){return boostBonus;}
-    public long boostDurationMillis(){return java.time.Duration.ofMinutes(minutes).toMillis();}
+
+    public boolean permanent(){return type!=Type.BOOST;}
 }

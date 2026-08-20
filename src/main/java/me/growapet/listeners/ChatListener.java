@@ -35,8 +35,8 @@ public final class ChatListener implements Listener {
         if (plugin.getChatGameManager().answer(player, raw)) return;
         String rank = LuckPermsHook.prefix(player);
         String legacyTag = plugin.getOptionsManager().get(player.getUniqueId(), "chat_tag", "");
-        String selectedTag = plugin.getCosmeticService().selected(player.getUniqueId(), "tag");
-        String tag = selectedTag.isBlank() ? legacyTag : plugin.getCosmeticService().render("tag", selectedTag, legacyTag);
+        String selectedTag = plugin.getTagService().selected(player.getUniqueId());
+        String tag = selectedTag.isBlank() ? legacyTag : plugin.getTagService().render(selectedTag, legacyTag);
         String legacyColor = plugin.getOptionsManager().get(player.getUniqueId(), "chat_color", "&f");
         String selectedColor = plugin.getCosmeticService().selected(player.getUniqueId(), "color");
         String color = selectedColor.isBlank() ? legacyColor : plugin.getCosmeticService().render("color", selectedColor, legacyColor);

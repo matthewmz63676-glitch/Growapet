@@ -20,7 +20,14 @@ commands:
     usage: /pets
   warp:
     description: Open the warp GUI
-    usage: /warp
+    aliases: [warps]
+    usage: /warp [name|list]
+  setwarp:
+    description: Set an administrator warp
+    usage: /setwarp <name>
+  warpplayer:
+    description: Force a player to an administrator warp
+    usage: /warpplayer <player> <warp>
   zones:
     description: View zones
     usage: /zones
@@ -32,11 +39,12 @@ commands:
     usage: /trade <player|accept|offer|confirm|cancel>
   stats:
     description: View your stats
-    usage: /stats
+    aliases: [stat, mystats]
+    usage: /stats [player|reload]
   leaderboard:
     description: View leaderboards
     aliases: [leaderboards]
-    usage: /leaderboard [coins|gems|credits|level|mobkills|bosskills|damage|coinmulti|gemsmulti|power|playtime|eggs|pets|trades|highestpet]
+    usage: /leaderboard [coins|gems|credits|level|mobkills|bosskills|damage|coinmulti|gemsmulti|power|playtime|eggs|pets|trades|highestpet|topmoneyspent]
   boss:
     description: View active boss info
     usage: /boss [spawn <bossId>]
@@ -69,7 +77,10 @@ commands:
     usage: /setspawn
   store:
     description: Open the Credits store
-    usage: /store
+    usage: /store [admin|check]
+  credits:
+    description: View or administer Credits
+    usage: /credits [show|give|take|set] [player] [amount]
   unlockzone:
     description: Force-unlock a zone for a player (admin)
     usage: /unlockzone <player> <zoneId>
@@ -84,6 +95,7 @@ commands:
     usage: /tutorial [start|stop] or /tutorial <start|stop|reset|setpoint|preview|validate> ...
   link:
     description: Generate a Discord account link code
+    aliases: [discord]
     usage: /link
   checklink:
     description: Check Discord account link status
@@ -97,6 +109,22 @@ commands:
   cosmetics:
     description: Select owned chat cosmetics
     usage: /cosmetics
+  tag:
+    description: Select an owned chat tag
+    usage: /tag
+    aliases: [tags]
+  tagadmin:
+    description: Administer chat tags
+    usage: /tagadmin <list|reload|create|delete|give|take>
+  customtag:
+    description: Grant a custom tag token
+    usage: /customtag <player>
+  testannouncement:
+    description: Preview the next configured announcement
+    usage: /testannouncement
+  topspent:
+    description: View or administer the TOPMONEYSPENT ledger
+    usage: /topspent [check|clear|clearall|player amount]
 
 permissions:
   growapet.admin:
@@ -120,6 +148,13 @@ permissions:
       growapet.admin.seasons: true
       growapet.admin.shopmigration: true
       growapet.admin.discord: true
+      growapet.admin.announcements: true
+      growapet.admin.topspent: true
+      growapet.admin.stats: true
+      growapet.admin.tags: true
+      growapet.admin.warp: true
+      growapet.admin.store: true
+      growapet.admin.credits: true
   growapet.admin.reload: { default: op }
   growapet.admin.doctor:
     description: Run read-only GrowAPet readiness diagnostics
@@ -142,6 +177,29 @@ permissions:
   growapet.admin.seasons: { default: op }
   growapet.admin.shopmigration: { default: op }
   growapet.admin.discord: { default: op }
+  growapet.admin.announcements: { default: op }
+  growapet.admin.topspent: { default: op }
+  growapet.stats:
+    description: View your GrowAPet statistics
+    default: true
+  growapet.stats.others: { default: op }
+  growapet.admin.stats: { default: op }
+  growapet.tags:
+    description: Open the owned tag selector
+    default: true
+  growapet.admin.tags: { default: op }
+  growapet.warp:
+    description: Use configured warps
+    default: true
+  growapet.admin.warp: { default: op }
+  growapet.store:
+    description: Open the Credit store
+    default: true
+  growapet.credits.view:
+    description: View your Credit balance
+    default: true
+  growapet.admin.store: { default: op }
+  growapet.admin.credits: { default: op }
   growapet.tutorial:
     description: Use the GrowAPet tutorial
     default: true

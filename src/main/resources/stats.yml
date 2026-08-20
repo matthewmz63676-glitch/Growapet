@@ -1,0 +1,22 @@
+title: "<dark_aqua><bold>PLAYER STATISTICS</bold></dark_aqua>"
+size: 54
+slots:
+  profile: 4
+  helmet: 10
+  chestplate: 19
+  leggings: 28
+  boots: 37
+  main-hand: 12
+  off-hand: 21
+  progression: 14
+  currencies: 16
+  combat: 23
+  pets: 25
+  activity: 32
+  playtime: 34
+  close: 49
+offline-item:
+  material: BARRIER
+  name: "<red>Equipment unavailable</red>"
+  lore:
+    - "<gray>This player is offline.</gray>"
