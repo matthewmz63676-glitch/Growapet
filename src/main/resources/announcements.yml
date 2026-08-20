@@ -1,0 +1,17 @@
+enabled: true
+interval-minutes: 45
+initial-delay-minutes: 2
+random-order: true
+prefix: "<dark_gray>[</dark_gray><gold><bold>TIP</bold></gold><dark_gray>]</dark_gray> "
+sound: BLOCK_NOTE_BLOCK_PLING
+sound-volume: 0.7
+sound-pitch: 1.2
+links:
+  discord-url: ""
+  store-url: ""
+messages:
+  - "<yellow>Complete your daily quests for bonus rewards! <white>Use /quests.</white></yellow>"
+  - "<aqua>Link Discord for community access and a permanent EXP bonus. <white>Use /link.</white></aqua>"
+  - "<light_purple>Spend Credits on cosmetics and boosters in <white>/store</white>.</light_purple>"
+  - "<green>Right-click another player or use <white>/stats</white> to inspect statistics.</green>"
+  - "<gold>Choose an unlocked chat tag with <white>/tag</white>.</gold>"

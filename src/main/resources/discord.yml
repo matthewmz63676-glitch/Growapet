@@ -10,6 +10,17 @@ message-max-length: 256
 outbound-queue-capacity: 256
 messages-per-10-seconds: 4
 require-linked-for-minecraft-chat: true
+nickname-on-link: false
+nickname-format: "{name}"
+link-broadcast-enabled: true
+link-broadcast: "<aqua><player> linked Discord.</aqua>"
+leave-unlink-broadcast: false
+messages:
+  link-issued: "<aqua>Your Discord link code is <white>{code}</white>.</aqua>"
+  already-linked: "<yellow>Your account is already linked.</yellow>"
+chat-bridge:
+  enabled: true
+  excluded-markers: ["[Discord]"]
 relay:
   minecraft-to-discord: true
   discord-to-minecraft: true

@@ -1,0 +1,101 @@
+title: "<light_purple><bold>CREDIT STORE</bold></light_purple>"
+size: 54
+# PETCORE-compatible product groups. GrowAPet only exposes products under
+# offers when a native adapter exists; unsupported groups remain documentation
+# and are intentionally not chargeable.
+ranks:
+  pebble: { released: false, price: 600, entitlement-id: "store.rank.pebble" }
+  crystal: { released: false, price: 2000, entitlement-id: "store.rank.crystal" }
+  nova: { released: false, price: 3000, entitlement-id: "store.rank.nova" }
+  zenith: { released: false, price: 4500, entitlement-id: "store.rank.zenith" }
+  apex: { released: false, price: 6000, entitlement-id: "store.rank.apex" }
+gamepasses:
+  instanthatch: { released: false, price: 500, entitlement-id: "store.pass.instanthatch" }
+  hatchx9: { released: false, price: 750, entitlement-id: "store.pass.hatchx9" }
+  petslot: { released: false, price: 299, entitlement-id: "store.pass.petslot" }
+booster-slots:
+  first: { released: false, price: 650 }
+  second: { released: false, price: 750 }
+tags:
+  custom-tag-price: 500
+offers:
+  pet_lover_tag:
+    slot: 10
+    material: NAME_TAG
+    display-name: "Pet Lover Tag"
+    description: "Permanent Pet Lover chat tag"
+    price: 15
+    type: ENTITLEMENT
+    entitlement-id: cosmetic.tag.pet_lover
+    entitlement-kind: CHAT_TAG
+    value: pet_lover
+  gold_chat:
+    slot: 12
+    material: GOLD_INGOT
+    display-name: "Gold Chat Color"
+    description: "Permanent gold chat messages"
+    price: 10
+    type: ENTITLEMENT
+    entitlement-id: cosmetic.color.gold
+    entitlement-kind: CHAT_COLOR
+    value: gold
+  aqua_chat:
+    slot: 14
+    material: DIAMOND
+    display-name: "Aqua Chat Color"
+    description: "Permanent aqua chat messages"
+    price: 10
+    type: ENTITLEMENT
+    entitlement-id: cosmetic.color.aqua
+    entitlement-kind: CHAT_COLOR
+    value: aqua
+  coin_boost:
+    slot: 19
+    material: GOLD_BLOCK
+    display-name: "Coin Plot Booster"
+    description: "+50% Coins for 30 minutes"
+    price: 10
+    type: BOOST
+    boost-type: COINS
+    bonus: 0.5
+    duration-minutes: 30
+  gem_boost:
+    slot: 21
+    material: DIAMOND_BLOCK
+    display-name: "Gem Plot Booster"
+    description: "+50% Gems for 30 minutes"
+    price: 12
+    type: BOOST
+    boost-type: GEMS
+    bonus: 0.5
+    duration-minutes: 30
+  mob_exp_boost:
+    slot: 23
+    material: EXPERIENCE_BOTTLE
+    display-name: "Mob EXP Booster"
+    description: "+50% Mob EXP for 30 minutes"
+    price: 10
+    type: BOOST
+    boost-type: MOB_EXP
+    bonus: 0.5
+    duration-minutes: 30
+  pet_exp_boost:
+    slot: 25
+    material: ENCHANTED_BOOK
+    display-name: "Pet EXP Booster"
+    description: "+50% Pet EXP for 30 minutes"
+    price: 10
+    type: BOOST
+    boost-type: PET_EXP
+    bonus: 0.5
+    duration-minutes: 30
+  hatch_boost:
+    slot: 28
+    material: TURTLE_EGG
+    display-name: "Hatch Speed Booster"
+    description: "+50% Hatch Speed for 30 minutes"
+    price: 12
+    type: BOOST
+    boost-type: HATCH_SPEED
+    bonus: 0.5
+    duration-minutes: 30

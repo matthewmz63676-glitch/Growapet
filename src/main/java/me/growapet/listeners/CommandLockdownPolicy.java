@@ -7,9 +7,9 @@ import java.util.Set;
 final class CommandLockdownPolicy {
     private static final Set<String> PLAYER_COMMANDS = Set.of(
             "plot", "pets", "stats", "warp", "zones", "visit", "leaderboard", "quests", "trade",
-            "options", "shop", "spawn", "store", "autokill", "daily", "boss", "growapet", "leaderboards", "tutorial", "cosmetics", "season"
+            "options", "shop", "spawn", "store", "credits", "autokill", "daily", "boss", "growapet", "leaderboards", "tutorial", "cosmetics", "season", "link", "discord", "checklink", "unlink", "tag", "tags", "stat", "mystats", "testannouncement", "topspent", "warps"
     );
-    private static final Set<String> ADMIN_COMMANDS = Set.of("getmob", "getegg", "getpet", "setspawn", "unlockzone");
+    private static final Set<String> ADMIN_COMMANDS = Set.of("getmob", "getegg", "getpet", "setspawn", "unlockzone", "setwarp", "warpplayer", "tagadmin", "customtag");
 
     private CommandLockdownPolicy() {}
 

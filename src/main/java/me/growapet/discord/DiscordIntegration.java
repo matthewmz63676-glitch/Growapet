@@ -117,6 +117,9 @@ public final class DiscordIntegration extends ListenerAdapter {
         // revokes relay access without waiting for a Minecraft relog.
         if (identity == null) return;
         if (!plugin.getOptionsManager().enabled(player.getUniqueId(), "discord_relay", true)) return;
+        for (String marker : plugin.getConfigManager().discord().getStringList("chat-bridge.excluded-markers")) {
+            if (marker != null && !marker.isBlank() && message.contains(marker)) return;
+        }
         String clean = sanitize(message); if (clean.isBlank()) return;
         String channelId = plugin.getConfigManager().discord().getString("channel-id", "");
         if (channelId.isBlank()) return;
@@ -177,7 +180,7 @@ public final class DiscordIntegration extends ListenerAdapter {
         if (content.isBlank() || content.length() > max) return;
         links.playerForDiscord(event.getAuthor().getId()).whenComplete((playerId, error) -> {
             if (error != null || playerId == null) return;
-            Bukkit.getScheduler().runTask(plugin, () -> {
+            runOnMain(() -> {
                 Player linked = Bukkit.getPlayer(playerId);
                 if (linked == null || !plugin.getOptionsManager().enabled(playerId, "discord_relay", true)) return;
                 Bukkit.broadcast(Messages.parse("<dark_aqua><bold>[Discord]</bold></dark_aqua> <white><name></white> <dark_gray>→</dark_gray> <gray><message></gray>", Messages.value("name", event.getAuthor().getName()), Messages.value("message", content)));
@@ -188,7 +191,18 @@ public final class DiscordIntegration extends ListenerAdapter {
     @Override public void onGuildMemberRemove(GuildMemberRemoveEvent event) {
         String configuredGuild = plugin.getConfigManager().discord().getString("guild-id", "");
         if (!configuredGuild.equals(event.getGuild().getId())) return;
-        links.playerForDiscord(event.getUser().getId()).thenCompose(playerId -> playerId == null ? CompletableFuture.completedFuture(null) : links.unlink(playerId));
+        links.playerForDiscord(event.getUser().getId()).thenAccept(playerId -> {
+            if (playerId == null) return;
+            links.unlink(playerId).whenComplete((ignored, error) -> {
+                if (error != null) return;
+                runOnMain(() -> {
+                    String template = plugin.getConfigManager().discord().getString("leave-unlink-broadcast", "");
+                    if (template == null || template.isBlank() || template.equalsIgnoreCase("false")) return;
+                    Player player = Bukkit.getPlayer(playerId);
+                    if (player != null) Bukkit.broadcast(Messages.parse(template, Messages.value("player", player.getName())));
+                });
+            });
+        });
     }
 
     public void applyLinkedRole(String discordId) {
@@ -210,7 +224,7 @@ public final class DiscordIntegration extends ListenerAdapter {
             event.getHook().editOriginal("Too many link attempts. Please wait before trying again.").queue();
             return;
         }
-        links.consume(code, event.getUser().getId(), event.getUser().getName()).whenComplete((result, error) -> Bukkit.getScheduler().runTask(plugin, () -> {
+        links.consume(code, event.getUser().getId(), event.getUser().getName()).whenComplete((result, error) -> runOnMain(() -> {
             String message = error == null && result != null ? result.message() : "The link could not be completed safely.";
             if (error == null && result != null && result.success()) message = "Minecraft account linked. Your lifetime EXP bonus is now active.";
             event.getHook().editOriginal(message).queue(); notifyLinked(result);
@@ -222,7 +236,7 @@ public final class DiscordIntegration extends ListenerAdapter {
             event.getHook().editOriginal("Too many link attempts. Please wait before trying again.").queue();
             return;
         }
-        links.consume(code, event.getUser().getId(), event.getUser().getName()).whenComplete((result, error) -> Bukkit.getScheduler().runTask(plugin, () -> {
+        links.consume(code, event.getUser().getId(), event.getUser().getName()).whenComplete((result, error) -> runOnMain(() -> {
             String message = error == null && result != null ? result.message() : "The link could not be completed safely.";
             if (error == null && result != null && result.success()) message = "Minecraft account linked. Your lifetime EXP bonus is now active.";
             event.getHook().editOriginal(message).queue(); notifyLinked(result);
@@ -230,7 +244,36 @@ public final class DiscordIntegration extends ListenerAdapter {
     }
 
     private void notifyLinked(DiscordLinkService.LinkResult result) {
-        if (result != null && result.success()) { Player player = Bukkit.getPlayer(result.playerId()); if (player != null) Messages.send(player, "<aqua><bold>DISCORD LINKED</bold></aqua> <dark_gray>•</dark_gray> <gray>Your lifetime <white>+5% EXP</white> bonus is active.</gray>"); }
+        if (result == null || !result.success()) return;
+        Player player = Bukkit.getPlayer(result.playerId());
+        if (player != null) {
+            Messages.send(player, "<aqua><bold>DISCORD LINKED</bold></aqua> <dark_gray>•</dark_gray> <gray>Your lifetime <white>+5% EXP</white> bonus is active.</gray>");
+            if (plugin.getConfigManager().discord().getBoolean("link-broadcast-enabled", true)) {
+                String template = plugin.getConfigManager().discord().getString("link-broadcast", "");
+                if (template != null && !template.isBlank()) Bukkit.broadcast(Messages.parse(template,
+                        Messages.value("player", player.getName()), Messages.value("discord_username", result.discordName()),
+                        Messages.value("discord_tag", result.discordName())));
+            }
+            applyLinkedNickname(result.discordId(), player.getName());
+        }
+    }
+
+    private void applyLinkedNickname(String discordId, String playerName) {
+        if (!isAvailable() || discordId == null || playerName == null || playerName.isBlank()
+                || !plugin.getConfigManager().discord().getBoolean("nickname-on-link", false)) return;
+        String guildId = plugin.getConfigManager().discord().getString("guild-id", "");
+        var guild = jda.getGuildById(guildId);
+        if (guild == null) return;
+        String format = plugin.getConfigManager().discord().getString("nickname-format", "{name}");
+        String nickname = format.replace("{player}", playerName).replace("{name}", playerName).trim();
+        if (nickname.isBlank()) return;
+        final String requestedNickname = nickname.substring(0, Math.min(32, nickname.length()));
+        var member = guild.getMemberById(discordId);
+        if (member != null) guild.modifyNickname(member, requestedNickname).queue(null, error -> plugin.getLogger().fine("Could not set linked Discord nickname: " + error.getMessage()));
+        else {
+            try { guild.retrieveMemberById(discordId).queue(found -> guild.modifyNickname(found, requestedNickname).queue(null, error -> plugin.getLogger().fine("Could not set linked Discord nickname: " + error.getMessage())), error -> plugin.getLogger().fine("Could not retrieve linked Discord member: " + error.getMessage())); }
+            catch (RuntimeException error) { plugin.getLogger().fine("Could not retrieve linked Discord member: " + error.getMessage()); }
+        }
     }
 
     private static String sanitize(String value) {
@@ -257,6 +300,10 @@ public final class DiscordIntegration extends ListenerAdapter {
         } catch (RuntimeException error) {
             return CompletableFuture.completedFuture(false);
         }
+    }
+
+    private void runOnMain(Runnable action) {
+        if (plugin.isEnabled()) Bukkit.getScheduler().runTask(plugin, action);
     }
 
     private record DiscordIdentity(String id, String name) { }

@@ -59,6 +59,16 @@ public final class CommandLockdownListener implements Listener {
             case "getegg", "getpet" -> player.hasPermission("growapet.admin.give");
             case "setspawn" -> player.hasPermission("growapet.admin.spawn");
             case "unlockzone" -> player.hasPermission("growapet.admin.zones");
+            case "setwarp", "warpplayer" -> player.hasPermission("growapet.admin.warp");
+            case "tagadmin", "customtag" -> player.hasPermission("growapet.admin.tags");
+            case "testannouncement" -> player.hasPermission("growapet.admin.announcements");
+            case "credits" -> tokens.length < 2 || tokens[1].equalsIgnoreCase("show") ? player.hasPermission("growapet.credits.view") || player.hasPermission("growapet.admin.credits") : player.hasPermission("growapet.admin.credits");
+            case "topspent" -> tokens.length < 2 || player.hasPermission("growapet.admin.topspent");
+            case "link", "discord", "checklink", "unlink" -> tokens.length < 2 || player.hasPermission("growapet.admin.discord");
+            case "tag", "tags" -> player.hasPermission("growapet.tags");
+            case "stats", "stat", "mystats" -> player.hasPermission("growapet.stats");
+            case "warp", "warps" -> player.hasPermission("growapet.warp");
+            case "cosmetics" -> player.hasPermission("growapet.cosmetics");
             case "autokill" -> player.hasPermission("growapet.autokill");
             case "tutorial" -> player.hasPermission("growapet.tutorial") || player.hasPermission("growapet.admin.tutorial");
             case "boss" -> tokens.length < 2 || !tokens[1].equalsIgnoreCase("spawn") || player.hasPermission("growapet.admin.boss");

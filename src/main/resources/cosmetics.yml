@@ -1,6 +1,14 @@
 enabled: true
 default-tag: ""
 tags:
+  pet_lover:
+    display-name: "Pet Lover"
+    value: "<light_purple>[Pet Lover]</light_purple>"
+    text: "[Pet Lover]"
+    from: "light_purple"
+    to: "light_purple"
+    label: "Pet Lover"
+    source: store
   harvest:
     display-name: "Harvest"
     value: "<gold>[Harvest]</gold>"

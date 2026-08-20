@@ -19,7 +19,7 @@ import java.util.function.Predicate;
 
 /** Context- and permission-aware completion for every command declared by GrowAPet. */
 public final class GrowAPetTabCompleter implements TabCompleter {
-    private static final List<String> LEADERBOARDS=List.of("coins","gems","credits","level","mobkills","bosskills","damage","coinmulti","gemsmulti","power","playtime","eggs","pets","trades","highestpet");
+    private static final List<String> LEADERBOARDS=List.of("coins","gems","credits","level","mobkills","bosskills","damage","coinmulti","gemsmulti","power","playtime","eggs","pets","trades","highestpet","topmoneyspent");
     private final GrowAPet plugin;
     public GrowAPetTabCompleter(GrowAPet plugin){this.plugin=plugin;}
 
@@ -33,6 +33,11 @@ public final class GrowAPetTabCompleter implements TabCompleter {
             case"quests"->quests(args);
             case"trade"->trade(sender,args);
             case"leaderboard"->leaderboards(sender,args);
+            case"stats"->stats(sender,args);
+            case"warp"->warps(sender,args);
+            case"credits"->credits(sender,args);
+            case"tagadmin"->tagAdmin(sender,args);
+            case"topspent"->topSpent(sender,args);
             case"boss"->boss(sender,args);
             case"options"->at(args,1,List.of("actionbar","trade","discord"));
             case"visit"->at(args,1,onlinePlayers(player->sender instanceof Player viewer&&!player.getUniqueId().equals(viewer.getUniqueId())));
@@ -119,6 +124,11 @@ public final class GrowAPetTabCompleter implements TabCompleter {
     private List<String> unlockZone(CommandSender sender,String[]args){if(!sender.hasPermission("growapet.admin.zones"))return List.of();if(args.length==1)return onlinePlayers(player->true);if(args.length==2)return zoneIds();return List.of();}
     private List<String> tutorial(CommandSender sender,String[]args){if(!sender.hasPermission("growapet.tutorial")&&!sender.hasPermission("growapet.admin.tutorial"))return List.of();if(args.length==1){List<String>values=new ArrayList<>(List.of("start","stop"));if(sender.hasPermission("growapet.admin.tutorial"))values.addAll(List.of("reset","setpoint","preview","validate"));return values;}if(args.length==2&&sender.hasPermission("growapet.admin.tutorial")&&List.of("start","stop","reset").contains(args[0].toLowerCase(Locale.ROOT)))return onlinePlayers(player->true);if(args.length==2&&sender.hasPermission("growapet.admin.tutorial")&&args[0].equalsIgnoreCase("setpoint"))return List.of("start","mob","shop","egg");return List.of();}
     private List<String> season(CommandSender sender,String[]args){if(args.length==1){List<String> values=new ArrayList<>(plugin.getSeasonService().ids());if(sender.hasPermission("growapet.admin.seasons"))values.addAll(List.of("start","stop","status","validate","preview","reconcile"));return values;}if(sender.hasPermission("growapet.admin.seasons")&&args.length==2&&List.of("start","stop","status","validate","preview","reconcile").contains(args[0].toLowerCase(Locale.ROOT)))return plugin.getSeasonService().ids();return List.of();}
+    private List<String> stats(CommandSender sender,String[]args){if(args.length==1){List<String> result=new ArrayList<>();if(sender.hasPermission("growapet.stats.others"))result.addAll(onlinePlayers(player->true));if(sender.hasPermission("growapet.admin.stats"))result.add("reload");return result;}return List.of();}
+    private List<String> warps(CommandSender sender,String[]args){if(args.length!=1)return List.of();List<String> result=new ArrayList<>(List.of("list"));result.addAll(zoneIds());result.addAll(plugin.getWarpService().customIds());return result;}
+    private List<String> credits(CommandSender sender,String[]args){if(args.length==1)return sender.hasPermission("growapet.admin.credits")?List.of("show","give","take","set"):List.of("show");if(args.length==2&&(args[0].equalsIgnoreCase("give")||args[0].equalsIgnoreCase("take")||args[0].equalsIgnoreCase("set")||args[0].equalsIgnoreCase("show"))&&sender.hasPermission("growapet.admin.credits"))return onlinePlayers(player->true);if(args.length==3&&sender.hasPermission("growapet.admin.credits"))return List.of("1","10","100","1000");return List.of();}
+    private List<String> tagAdmin(CommandSender sender,String[]args){if(!sender.hasPermission("growapet.admin.tags"))return List.of();if(args.length==1)return List.of("list","reload","create","delete","give","take");if(args.length==2&&(args[0].equalsIgnoreCase("delete")))return plugin.getTagService().all().stream().map(me.growapet.tags.TagService.Definition::id).toList();if(args.length==2&&(args[0].equalsIgnoreCase("give")||args[0].equalsIgnoreCase("take")))return onlinePlayers(player->true);if(args.length==3&&(args[0].equalsIgnoreCase("give")||args[0].equalsIgnoreCase("take")))return plugin.getTagService().all().stream().map(me.growapet.tags.TagService.Definition::id).toList();return List.of();}
+    private List<String> topSpent(CommandSender sender,String[]args){if(!sender.hasPermission("growapet.admin.topspent"))return List.of();if(args.length==1){List<String> result=new ArrayList<>(List.of("check","clear","clearall"));result.addAll(onlinePlayers(player->true));return result;}if(args.length==2&&(args[0].equalsIgnoreCase("check")||args[0].equalsIgnoreCase("clear")))return onlinePlayers(player->true);if(args.length==2&&args[0].equalsIgnoreCase("clearall"))return List.of("confirm");if(args.length==2)return List.of("1.00","5.00","25.00");return List.of();}
     private List<String> zoneIds(){return plugin.getZoneManager().getZonesInOrder().stream().map(zone->zone.getId()).toList();}
     private static List<String> keys(ConfigurationSection section){return section==null?List.of():List.copyOf(section.getKeys(false));}
     private static List<String> at(String[]args,int position,List<String>values){return args.length==position?values:List.of();}

@@ -21,7 +21,8 @@ public enum LeaderboardType {
     EGGS("eggs_hatched", "Eggs Hatched", Material.TURTLE_EGG, PlayerData::getEggsHatched, false),
     PETS("pets_collected", "Pets Collected", Material.CAT_SPAWN_EGG, PlayerData::getPetsCollected, false),
     TRADES("trades", "Trades", Material.EMERALD, PlayerData::getTrades, false),
-    HIGHESTPET("highest_pet_level", "Highest Pet", Material.ENCHANTED_BOOK, PlayerData::getHighestPetLevel, false);
+    HIGHESTPET("highest_pet_level", "Highest Pet", Material.ENCHANTED_BOOK, PlayerData::getHighestPetLevel, false),
+    TOPMONEYSPENT("top_money_spent", "Top Money Spent", Material.EMERALD, ignored -> 0, true);
     private final String column,label;private final Material icon;private final ToDoubleFunction<PlayerData> live;private final boolean decimal;
     LeaderboardType(String column,String label,Material icon,ToDoubleFunction<PlayerData>live,boolean decimal){this.column=column;this.label=label;this.icon=icon;this.live=live;this.decimal=decimal;}
     public String column(){return column;}public String label(){return label;}public Material icon(){return icon;}public double live(PlayerData data){return live.applyAsDouble(data);}public boolean decimal(){return decimal;}

@@ -22,7 +22,8 @@ final class Migrations {
                 new Migration(9, Migrations::persistentMobSpawnSchema),
                 new Migration(10, Migrations::laterIntegrationsSchema),
                 new Migration(11, Migrations::laterIntegrationsHardeningSchema),
-                new Migration(12, Migrations::discordLinkReuseSchema)
+                new Migration(12, Migrations::discordLinkReuseSchema),
+                new Migration(13, Migrations::petcoreModulesSchema)
         );
     }
 
@@ -176,6 +177,17 @@ final class Migrations {
         try (Statement statement = connection.createStatement()) {
             statement.executeUpdate("UPDATE discord_links SET unlinked_discord_id=discord_id,discord_id='unlinked:'||player_uuid||':'||unlinked_at WHERE unlinked_at IS NOT NULL AND unlinked_discord_id IS NULL");
         }
+    }
+
+    private static void petcoreModulesSchema(Connection connection) throws SQLException {
+        execute(connection,
+                "CREATE TABLE IF NOT EXISTS money_spent (player_uuid TEXT PRIMARY KEY, player_name TEXT NOT NULL, amount_cents INTEGER NOT NULL DEFAULT 0 CHECK(amount_cents>=0), updated_at INTEGER NOT NULL)",
+                "CREATE INDEX IF NOT EXISTS idx_money_spent_amount ON money_spent(amount_cents DESC,player_name ASC)",
+                "CREATE TABLE IF NOT EXISTS custom_tags (tag_id TEXT PRIMARY KEY, display_name TEXT NOT NULL, markup TEXT NOT NULL, created_by TEXT NOT NULL, created_at INTEGER NOT NULL)",
+                "CREATE TABLE IF NOT EXISTS custom_tag_tokens (token TEXT PRIMARY KEY, tag_id TEXT NOT NULL, player_uuid TEXT NOT NULL, redeemed_at INTEGER, created_at INTEGER NOT NULL)",
+                "CREATE INDEX IF NOT EXISTS idx_custom_tag_tokens_player ON custom_tag_tokens(player_uuid,redeemed_at)",
+                "CREATE TABLE IF NOT EXISTS store_purchases (receipt_id TEXT PRIMARY KEY, buyer_uuid TEXT NOT NULL, recipient_uuid TEXT NOT NULL, product_id TEXT NOT NULL, quantity INTEGER NOT NULL DEFAULT 1 CHECK(quantity>0), credits_spent INTEGER NOT NULL DEFAULT 0 CHECK(credits_spent>=0), purchased_at INTEGER NOT NULL)",
+                "CREATE INDEX IF NOT EXISTS idx_store_purchases_recipient ON store_purchases(recipient_uuid,purchased_at)");
     }
 
     private static void execute(Connection connection, String... statements) throws SQLException {
